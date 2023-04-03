@@ -2124,6 +2124,7 @@ function add_user_freebsd #<group_name> <user_name> <basedir>
 		return 0
 	fi
 
+
 	# Assign 1000 as the base uid
 	typeset -i uid=1000
 	while true; do
@@ -2138,6 +2139,10 @@ function add_user_freebsd #<group_name> <user_name> <basedir>
 			log_fail "No user id available under 65000 for $user"
 		fi
 	done
+
+	if [ -d /usr/local/etc/sudoers.d/ ] ; then
+		echo "$user ALL=(ALL:ALL) NOPASSWD: ALL" | sudo tee /usr/local/etc/sudoers.d/$user
+	fi
 
 	# Silence MOTD
 	touch $basedir/$user/.hushlogin
@@ -2156,6 +2161,9 @@ function del_user_freebsd #<logname>
 
 	if id $user > /dev/null 2>&1; then
 		log_must pw userdel $user
+		if [ -e /usr/local/etc/sudoers.d/$user ] ; then
+			rm /usr/local/etc/sudoers.d/$user
+		fi
 	fi
 
 	return 0
@@ -2810,7 +2818,6 @@ function user_run
 
 	typeset out=$TEST_BASE_DIR/out
 	typeset err=$TEST_BASE_DIR/err
-
 	sudo -Eu $user env PATH="$PATH" ksh <<<"$*" >$out 2>$err
 	typeset res=$?
 	log_note "out: $(<$out)"

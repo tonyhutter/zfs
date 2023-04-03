@@ -35,6 +35,7 @@ from subprocess import check_output
 from threading import Timer
 from time import time, CLOCK_MONOTONIC
 from os.path import exists
+from getpass import getuser 
 
 BASEDIR = '/var/tmp/test_results'
 TESTDIR = '/usr/share/zfs/'
@@ -220,7 +221,7 @@ User: %s
         running as that user, prepend the appropriate sudo command to run
         as that user.
         """
-        me = getpwuid(os.getuid())
+        me = getuser()
 
         if not user or user is me:
             if os.path.isfile(cmd+'.ksh') and os.access(cmd+'.ksh', os.X_OK):
@@ -338,8 +339,11 @@ User: %s
         merged stdout and stderr), and for each test, the unmodified
         stdout/stderr/merged in its own file.
         """
+        try:
+            logname = getpwuid(os.getuid()).pw_name
+        except:
+            logname = 'unknown'
 
-        logname = getpwuid(os.getuid()).pw_name
         rer = ''
         if self.reran is True:
             rer = ' (RERAN)'

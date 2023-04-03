@@ -88,6 +88,7 @@ function summarize_f() {
   rm -rf testfiles
   for i in $(seq 1 $FUNCTIONAL_PARTS); do
     tarfile="$2/part$i.tar"
+    echo "looking for $tarfile"
     check_tarfile "$tarfile"
     check_logfile "testfiles/log"
   done
@@ -100,13 +101,23 @@ function summarize_f() {
 # [x] split files into smaller ones and create additional steps
 
 ERRLOGS=0
+
+echo "begin summary"
 if [ ! -f Summary/Summary.md ]; then
   # first call, we do the default summary (~500k)
   echo -n > Summary.md
-  summarize_s "Sanity Tests Ubuntu 20.04" Logs-20.04-sanity
-  summarize_s "Sanity Tests Ubuntu 22.04" Logs-22.04-sanity
-  summarize_f "Functional Tests Ubuntu 20.04" Logs-20.04-functional
-  summarize_f "Functional Tests Ubuntu 22.04" Logs-22.04-functional
+
+  if [ -e Logs-freebsd-13-functional ] ; then
+      echo "looking at freebsd logs"
+      summarize_f "Functional Tests FreeBSD 13" Logs-freebsd-13-functional
+      summarize_s "Sanity Tests FreeBSD 13" Logs-freebsd-13-sanity
+  else
+      echo "looking at ubuntu logs"
+      summarize_s "Sanity Tests Ubuntu 20.04" Logs-20.04-sanity
+      summarize_s "Sanity Tests Ubuntu 22.04" Logs-22.04-sanity
+      summarize_f "Functional Tests Ubuntu 20.04" Logs-20.04-functional
+      summarize_f "Functional Tests Ubuntu 22.04" Logs-22.04-functional
+  fi
 
   cat Summary.md >> $GITHUB_STEP_SUMMARY
   mkdir -p Summary

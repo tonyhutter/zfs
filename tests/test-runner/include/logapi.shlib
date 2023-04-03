@@ -465,6 +465,7 @@ function _endlog
 function _printline
 {
 	echo "$@"
+	echo "$@" >> /tmp/testing.log
 }
 
 # Output an error message

@@ -223,6 +223,7 @@ create_links() {
 			if [ ! -d "$j/$i" ] && [ -e "$j/$i" ]; then
 				ln -sf "$j/$i" "$STF_PATH/$i" || \
 				    fail "Couldn't link $i"
+
 				break
 			fi
 		done
