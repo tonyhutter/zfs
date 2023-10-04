@@ -205,6 +205,40 @@ _LIBZUTIL_H void zfs_setproctitle(const char *fmt, ...);
 typedef int (*pool_vdev_iter_f)(void *, nvlist_t *, void *);
 int for_each_vdev_cb(void *zhp, nvlist_t *nv, pool_vdev_iter_f func,
     void *data);
+int for_each_vdev_macro_helper_func(void *zhp_data, nvlist_t *nv, void *data);
+int for_each_leaf_vdev_macro_helper_func(void *zhp_data, nvlist_t *nv, void *data);
+/*
+ * Often you'll want to iterate over all the vdevs in the pool, but don't want
+ * to use for_each_vdev() since that requires a callback function.
+ *
+ * Instead you can use FOR_EACH_VDEV():
+ *
+ *     zpool_handle_t *zhp      // Assume this is initialized
+ *     nvlist_t *nv 
+ *     ...
+ *     FOR_EACH_VDEV(zhp, nv) {
+ *         const char *path = NULL;
+ *         nvlist_lookup_string(nv, ZPOOL_CONFIG_PATH, &path);
+ *         printf("Looking at vdev  %s\n", __func__, path);
+ *     }
+ *
+ * Note: FOR_EACH_VDEV runs in O(n^2) time where n = number of vdevs.  Typically
+ * pools are 100 vdevs or less, so shouldn't be an issue.
+ */
+#define __FOR_EACH_VDEV(__zhp, __nv, __func) { \
+       __nv = zpool_get_config(__zhp, NULL); \
+       VERIFY0(nvlist_lookup_nvlist(__nv, ZPOOL_CONFIG_VDEV_TREE, &__nv)); \
+       } \
+       for (nvlist_t *__root_nv = __nv, *__state = (nvlist_t *) 0; \
+            for_each_vdev_cb(&__state, __root_nv, __func, &__nv) == 1; \
+        )
+
+#define FOR_EACH_VDEV(__zhp, __nv) \
+    __FOR_EACH_VDEV(__zhp, __nv, for_each_vdev_macro_helper_func)
+
+#define FOR_EACH_LEAF_VDEV(__zhp, __nv) \
+    __FOR_EACH_VDEV(__zhp, __nv, for_each_leaf_vdev_macro_helper_func)
+
 int for_each_vdev_in_nvlist(nvlist_t *nvroot, pool_vdev_iter_f func,
     void *data);
 void update_vdevs_config_dev_sysfs_path(nvlist_t *config);

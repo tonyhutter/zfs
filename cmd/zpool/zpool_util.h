@@ -70,7 +70,6 @@ int for_each_pool(int, char **, boolean_t unavail, zprop_list_t **, zfs_type_t,
 
 /* Vdev list functions */
 int for_each_vdev(zpool_handle_t *zhp, pool_vdev_iter_f func, void *data);
-
 typedef struct zpool_list zpool_list_t;
 
 zpool_list_t *pool_list_get(int, char **, zprop_list_t **, zfs_type_t,

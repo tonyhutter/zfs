@@ -8828,6 +8828,13 @@ status_callback(zpool_handle_t *zhp, void *data)
 		    "determined.\n"));
 	}
 
+	nvlist_t *nv;
+	FOR_EACH_LEAF_VDEV(zhp, nv) {
+		const char *path = NULL;
+		nvlist_lookup_string(nv, ZPOOL_CONFIG_PATH, &path);
+		printf("%s: got nvpair %p, %s\n", __func__, nv, path);
+	}
+
 	return (0);
 }
 

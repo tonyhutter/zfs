@@ -1359,7 +1359,7 @@ zpool_find_import_scan(libpc_handle_t *hdl, pthread_mutex_t *lock,
 {
 	avl_tree_t *cache;
 	rdsk_node_t *slice;
-	void *cookie;
+	void *state;
 	int i, error;
 
 	*slice_cache = NULL;
@@ -1401,8 +1401,8 @@ zpool_find_import_scan(libpc_handle_t *hdl, pthread_mutex_t *lock,
 	return (0);
 
 error:
-	cookie = NULL;
-	while ((slice = avl_destroy_nodes(cache, &cookie)) != NULL) {
+	state = NULL;
+	while ((slice = avl_destroy_nodes(cache, &state)) != NULL) {
 		free(slice->rn_name);
 		free(slice);
 	}
@@ -1430,7 +1430,7 @@ zpool_find_import_impl(libpc_handle_t *hdl, importargs_t *iarg,
 	config_entry_t *ce, *cenext;
 	name_entry_t *ne, *nenext;
 	rdsk_node_t *slice;
-	void *cookie;
+	void *state;
 	tpool_t *t;
 
 	verify(iarg->poolname == NULL || iarg->guid == 0);
@@ -1452,8 +1452,8 @@ zpool_find_import_impl(libpc_handle_t *hdl, importargs_t *iarg,
 	 * Process the cache, filtering out any entries which are not
 	 * for the specified pool then adding matching label configs.
 	 */
-	cookie = NULL;
-	while ((slice = avl_destroy_nodes(cache, &cookie)) != NULL) {
+	state = NULL;
+	while ((slice = avl_destroy_nodes(cache, &state)) != NULL) {
 		if (slice->rn_config != NULL) {
 			nvlist_t *config = slice->rn_config;
 			boolean_t matched = B_TRUE;
@@ -1896,6 +1896,78 @@ zpool_find_config(libpc_handle_t *hdl, const char *target, nvlist_t **configp,
 	free(targetdup);
 
 	return (0);
+}
+
+static boolean_t
+vdev_is_leaf(nvlist_t *nv)
+{
+	uint_t children = 0;
+	nvlist_t **child;
+
+	(void) nvlist_lookup_nvlist_array(nv, ZPOOL_CONFIG_CHILDREN,
+	    &child, &children);
+
+	return (children == 0);
+}
+
+/*
+ * This function is called by our FOR_EACH_VDEV() macro.
+ *
+ * It's a state machine
+ *
+ * last_nv = NULL: First iteration, return current NV
+ * last_nv = <some NV>:	Return
+ */
+static int
+__for_each_vdev_macro_helper_func(void *state, nvlist_t *nv, void *last_nv,
+    boolean_t leafs_only)
+{
+	enum {FIRST_NV = 0, NEXT_IS_MATCH = 0x1, STOP_LOOKING = 0x2};
+
+	/* The very first entry in the NV list is a special case */
+	if (*((nvlist_t **) state) == (nvlist_t *) FIRST_NV) {
+		if (leafs_only && !vdev_is_leaf(nv))
+			return (0);
+
+		printf("First case\n");
+		*((nvlist_t **) last_nv) = nv;
+		*((nvlist_t **) state) = (nvlist_t *) STOP_LOOKING;
+		return 1;
+	}
+
+	/* We came across our last_nv, meaning the next one is the one we want */
+	if ((nv == *((nvlist_t **)last_nv))) {
+		/* Next loop will be the one */
+		*((nvlist_t **) state) = (nvlist_t *) NEXT_IS_MATCH;
+		return 0;
+	}
+
+	/* 
+	 * We marked NEXT_IS_MATCH on the previous iteration, so this is the one
+	 * we want.
+	 */
+	if (*(nvlist_t **) state == (nvlist_t *) NEXT_IS_MATCH) {
+		if (leafs_only && !vdev_is_leaf(nv))
+			return (0);
+
+		*((nvlist_t **) last_nv) = nv;
+		*((nvlist_t **) state) = (nvlist_t *) STOP_LOOKING;
+		return 1;
+	}
+
+	return 0;
+}
+
+int
+for_each_vdev_macro_helper_func(void *state, nvlist_t *nv, void *last_nv)
+{
+	return (__for_each_vdev_macro_helper_func(state, nv, last_nv, B_FALSE));
+}
+
+int
+for_each_leaf_vdev_macro_helper_func(void *state, nvlist_t *nv, void *last_nv)
+{
+	return (__for_each_vdev_macro_helper_func(state, nv, last_nv, B_TRUE));
 }
 
 /*
