@@ -353,7 +353,7 @@ get_usage(zpool_help_t idx)
 		return (gettext("\tattach [-fsw] [-o property=value] "
 		    "<pool> <device> <new-device>\n"));
 	case HELP_CLEAR:
-		return (gettext("\tclear [-nF] <pool> [device]\n"));
+		return (gettext("\tclear [[-1]|[-nF]] <pool> [device]\n"));
 	case HELP_CREATE:
 		return (gettext("\tcreate [-fnd] [-o property=value] ... \n"
 		    "\t    [-O file-system-property=value] ... \n"
@@ -389,9 +389,10 @@ get_usage(zpool_help_t idx)
 		    "[-T d|u] [pool] ... \n"
 		    "\t    [interval [count]]\n"));
 	case HELP_OFFLINE:
-		return (gettext("\toffline [-f] [-t] <pool> <device> ...\n"));
+		return (gettext("\toffline [-0]|[[-f][-t]] <pool> <device> "
+		    "...\n"));
 	case HELP_ONLINE:
-		return (gettext("\tonline [-e] <pool> <device> ...\n"));
+		return (gettext("\tonline [-1e] <pool> <device> ...\n"));
 	case HELP_REPLACE:
 		return (gettext("\treplace [-fsw] [-o property=value] "
 		    "<pool> <device> [new-device]\n"));
@@ -515,6 +516,309 @@ print_vdev_prop_cb(int prop, void *cb)
 
 	return (ZPROP_CONT);
 }
+
+/*
+ * Given a power string: "on", "off", "1", or "0", return 0 if it's an
+ * off value, 1 if it's an on value, and -1 if the value is unrecognized.
+ */
+static int zpool_power_parse_value(char *str)
+{
+	if ((strcmp(str, "off") == 0) || (strcmp(str, "0") == 0))
+		return (0);
+
+	if ((strcmp(str, "on") == 0) || (strcmp(str, "1") == 0))
+		return (1);
+
+	return (-1);
+}
+
+/*
+ * Read from a sysfs file and return an allocated string.  Removes
+ * the newline from the end of the string if there is one.
+ *
+ * Returns a string on success (which must be freed), or NULL on error.
+ */
+static char *zpool_sysfs_gets(char *path)
+{
+	int fd;
+	struct stat statbuf;
+	char *buf = NULL;
+	ssize_t count = 0;
+	fd = open(path, O_RDONLY);
+	if (fd < 0)
+		return (NULL);
+
+	if (fstat(fd, &statbuf) != 0) {
+		close(fd);
+		return (NULL);
+	}
+
+	buf = calloc(sizeof (*buf), statbuf.st_size + 1);
+	if (!buf) {
+		close(fd);
+		return (NULL);
+	}
+
+	/*
+	 * Note, we can read less bytes than st_size, and that's ok.  Sysfs
+	 * files will report their size is 4k even if they only return a small
+	 * string.
+	 */
+	count = read(fd, buf, statbuf.st_size);
+	if (count < 0) {
+		/* Error doing read() or we overran the buffer */
+		close(fd);
+		free(buf);
+		return (NULL);
+	}
+
+	/* Remove trailing newline */
+	if (buf[count - 1] == '\n')
+		buf[count - 1] = 0;
+
+	close(fd);
+
+	return (buf);
+}
+
+/*
+ * Write a string to a sysfs file.
+ *
+ * Returns 0 on success, non-zero otherwise.
+ */
+static int zpool_sysfs_puts(char *path, char *str)
+{
+	FILE *file;
+
+	file = fopen(path, "w");
+	if (!file) {
+		return (-1);
+	}
+
+	if (fputs(str, file) < 0) {
+		fclose(file);
+		return (-2);
+	}
+	fclose(file);
+	return (0);
+}
+
+/*
+ * Given a vdev name or path (like 'sda' or 'U0' or GUID) return the full /dev
+ * path for the device (like '/dev/sda' or '/dev/disk/by-vdev/U0'
+ */
+static const char *
+zpool_vdev_name_to_dev_path(zpool_handle_t *zhp, char *path)
+{
+	return (fnvlist_lookup_string(zpool_find_vdev(zhp, path, NULL, NULL,
+	    NULL), ZPOOL_CONFIG_PATH));
+}
+
+/*
+ * Given a device (like /dev/disk/by-vdev/L0) return an allocated string
+ * containing the sysfs path to it's power control file.  Also does a check
+ * if the power control file really exists and has correct permissions.
+ *
+ * Examples:
+ *
+ * /sys/class/enclosure/0:0:122:0/10/power_status
+ * /sys/bus/pci/slots/10/power
+ *
+ * Returns allocated string on success (which must be freed), NULL on failure.
+ */
+static char *
+zpool_power_sysfs_path(zpool_handle_t *zhp, char *device)
+{
+	nvlist_t *vdev_nv = NULL;
+	const char *enc_sysfs_dir = NULL;
+	char *path = NULL;
+
+	vdev_nv = zpool_find_vdev(zhp, device, NULL, NULL, NULL);
+	if (vdev_nv == NULL)
+		return (NULL);
+
+
+	/* Make sure we're getting the update enclosure sysfs path */
+	update_vdev_config_dev_sysfs_path(vdev_nv, device,
+	    ZPOOL_CONFIG_VDEV_ENC_SYSFS_PATH);
+
+	asprintf(&path, "/tmp/%s", zfs_basename(device));
+	nvlist_add_string(vdev_nv, ZPOOL_CONFIG_VDEV_ENC_SYSFS_PATH, path);
+	free(path);
+	path = NULL;
+
+	if (nvlist_lookup_string(vdev_nv, ZPOOL_CONFIG_VDEV_ENC_SYSFS_PATH,
+	    &enc_sysfs_dir) != 0) {
+		return (NULL);
+	}
+
+	if (asprintf(&path, "%s/power_status", enc_sysfs_dir) == -1)
+		return (NULL);
+
+	if (access(path, W_OK) != 0) {
+		free(path);
+		path = NULL;
+		/* No HDD 'power_control' file, maybe it's NVMe? */
+		if (asprintf(&path, "%s/power", enc_sysfs_dir) == -1) {
+			return (NULL);
+		}
+
+		if (access(path, R_OK | W_OK) != 0) {
+			/* Not NVMe either */
+			free(path);
+			return (NULL);
+		}
+	}
+
+	return (path);
+}
+
+/*
+ * Wait for a device to appear (like /dev/sda).  It can take some time to
+ * spin up disks after a power-on.  Wait 10 seconds max.
+ *
+ * Return 0 on success, non-zero if we never saw the device before the
+ * timeout.
+ */
+static int
+zpool_wait_for_device_to_show_up(char *device_path)
+{
+	int i;
+	for (i = 0; i < 10; i++) {
+		if (access(device_path, F_OK) == 0)
+			break;
+		sleep(1);
+	}
+	if (i == 10)
+		return (ENOENT);
+
+	return (0);
+}
+
+/*
+ * Given a path to a sysfs power control file, return B_TRUE if you should use
+ * "on/off" words to control it, or B_FALSE otherwise ("0/1" to control).
+ */
+static boolean_t
+zpool_power_use_word(char *sysfs_path)
+{
+	if (strcmp(&sysfs_path[strlen(sysfs_path) - strlen("power_status")],
+	    "power_status") == 0) {
+		return (B_TRUE);
+	}
+	return (B_FALSE);
+}
+
+/*
+ * Check the sysfs power control value for a device.
+ *
+ * Returns:
+ *  0 - Power is off
+ *  1 - Power is on
+ * -1 - Error
+ */
+static int
+zpool_power_current_state(zpool_handle_t *zhp, char *device_path)
+{
+	char *path;
+	char *val;
+	int rc;
+
+	path = zpool_power_sysfs_path(zhp, device_path);
+	if (path == NULL)
+		return (-1);
+
+	val = zpool_sysfs_gets(path);
+	if (val == NULL) {
+		free(path);
+		return (-1);
+	}
+
+	rc = zpool_power_parse_value(val);
+	free(val);
+	free(path);
+	return (rc);
+}
+
+/*
+ * Turn on or off the slot to a device
+ */
+static int
+zpool_power(zpool_handle_t *zhp, char *device_path, boolean_t turn_on)
+{
+	char *sysfs_path;
+	const char *val;
+	int rc;
+
+	rc = zpool_power_current_state(zhp, device_path);
+	if (rc == -1) {
+		return (-1);
+	}
+
+	/* Already correct value? */
+	if (rc == (int)turn_on)
+		return (0);
+
+	sysfs_path = zpool_power_sysfs_path(zhp, device_path);
+
+	if (sysfs_path == NULL)
+		return (-1);
+
+	if (zpool_power_use_word(sysfs_path)) {
+		val = turn_on ? "on" : "off";
+	} else {
+		val = turn_on ? "1" : "0";
+	}
+
+	rc = zpool_sysfs_puts(sysfs_path, (char *)val);
+	free(sysfs_path);
+
+	return (rc);
+}
+
+static int
+zpool_power_on(zpool_handle_t *zhp, char *device_path)
+{
+	return (zpool_power(zhp, device_path, B_TRUE));
+}
+
+static int
+zpool_power_on_and_disk_wait(zpool_handle_t *zhp, char *device_path)
+{
+	zpool_power_on(zhp, device_path);
+	zpool_disk_wait(device_path);
+	return (0);
+}
+
+static void
+zpool_power_on_pool_and_wait_for_devices(zpool_handle_t *zhp)
+{
+	nvlist_t *nv;
+	const char *path = NULL;
+
+	/* Power up all the devices first */
+	FOR_EACH_LEAF_VDEV(zhp, nv) {
+		path = fnvlist_lookup_string(nv, ZPOOL_CONFIG_PATH);
+		zpool_power_on(zhp, (char *)path);
+	}
+
+	/*
+	 * Wait for their devices to show up.  Since we powered them on
+	 * at roughly the same time, they should all come online around
+	 * the same time.
+	 */
+	FOR_EACH_LEAF_VDEV(zhp, nv) {
+		path = fnvlist_lookup_string(nv, ZPOOL_CONFIG_PATH);
+		zpool_wait_for_device_to_show_up((char *)path);
+	}
+}
+
+static int
+zpool_power_off(zpool_handle_t *zhp, char *device_path)
+{
+	return (zpool_power(zhp, device_path, B_FALSE));
+}
+
 
 /*
  * Display usage message.  If we're inside a command, display only the usage for
@@ -2093,6 +2397,7 @@ typedef struct status_cbdata {
 	boolean_t	cb_print_vdev_init;
 	boolean_t	cb_print_vdev_trim;
 	vdev_cmd_data_list_t	*vcdl;
+	boolean_t	cb_print_power;
 } status_cbdata_t;
 
 /* Return 1 if string is NULL, empty, or whitespace; return 0 otherwise. */
@@ -2377,6 +2682,26 @@ print_status_config(zpool_handle_t *zhp, status_cbdata_t *cb, const char *name,
 				printf(" %5llu", (u_longlong_t)vs->vs_slow_ios);
 			else
 				printf(" %5s", rbuf);
+		}
+		if (cb->cb_print_power) {
+			if (children == 0)  {
+				/* Only leaf vdevs have physical slots */
+				switch (zpool_power_current_state(zhp, (char *)
+				    fnvlist_lookup_string(nv,
+				    ZPOOL_CONFIG_PATH))) {
+				case 0:
+					printf_color(ANSI_RED, " %5s",
+					    gettext("off"));
+					break;
+				case 1:
+					printf(" %5s", gettext("on"));
+					break;
+				default:
+					printf(" %5s", "-");
+				}
+			} else {
+				printf(" %5s", "-");
+			}
 		}
 	}
 
@@ -6953,12 +7278,16 @@ zpool_do_online(int argc, char **argv)
 	int ret = 0;
 	vdev_state_t newstate;
 	int flags = 0;
+	boolean_t is_power_on = B_FALSE;
 
 	/* check options */
-	while ((c = getopt(argc, argv, "e")) != -1) {
+	while ((c = getopt(argc, argv, "1e")) != -1) {
 		switch (c) {
 		case 'e':
 			flags |= ZFS_ONLINE_EXPAND;
+			break;
+		case '1':
+			is_power_on = B_TRUE;
 			break;
 		case '?':
 			(void) fprintf(stderr, gettext("invalid option '%c'\n"),
@@ -6966,6 +7295,9 @@ zpool_do_online(int argc, char **argv)
 			usage(B_FALSE);
 		}
 	}
+
+	if (libzfs_envvar_is_set("ZPOOL_TURN_ON_SLOT_POWER"))
+		is_power_on = B_TRUE;
 
 	argc -= optind;
 	argv += optind;
@@ -6988,6 +7320,16 @@ zpool_do_online(int argc, char **argv)
 	for (i = 1; i < argc; i++) {
 		vdev_state_t oldstate;
 		boolean_t avail_spare, l2cache;
+
+		if (is_power_on) {
+			const char *path;
+			path = zpool_vdev_name_to_dev_path(zhp, argv[i]);
+			if (path != NULL) {
+				zpool_power_on_and_disk_wait(zhp,
+				    (char *)path);
+			}
+		}
+
 		nvlist_t *tgt = zpool_find_vdev(zhp, argv[i], &avail_spare,
 		    &l2cache, NULL);
 		if (tgt == NULL) {
@@ -7033,7 +7375,9 @@ zpool_do_online(int argc, char **argv)
 }
 
 /*
- * zpool offline [-ft] <pool> <device> ...
+ * zpool offline [-0]|[-ft] <pool> <device> ...
+ *
+ * 	-0	Power off the enclosure slot to the drive (if possible)
  *
  *	-f	Force the device into a faulted state.
  *
@@ -7049,9 +7393,10 @@ zpool_do_offline(int argc, char **argv)
 	int ret = 0;
 	boolean_t istmp = B_FALSE;
 	boolean_t fault = B_FALSE;
+	boolean_t is_power_off = B_FALSE;
 
 	/* check options */
-	while ((c = getopt(argc, argv, "ft")) != -1) {
+	while ((c = getopt(argc, argv, "0ft")) != -1) {
 		switch (c) {
 		case 'f':
 			fault = B_TRUE;
@@ -7059,11 +7404,28 @@ zpool_do_offline(int argc, char **argv)
 		case 't':
 			istmp = B_TRUE;
 			break;
+		case '0':
+			is_power_off = B_TRUE;
+			break;
 		case '?':
 			(void) fprintf(stderr, gettext("invalid option '%c'\n"),
 			    optopt);
 			usage(B_FALSE);
 		}
+	}
+
+	if (is_power_off && fault) {
+		(void) fprintf(stderr,
+		    gettext("-0 and -f cannot be used together\n"));
+		usage(B_FALSE);
+		return (1);
+	}
+
+	if (is_power_off && istmp) {
+		(void) fprintf(stderr,
+		    gettext("-0 and -t cannot be used together\n"));
+		usage(B_FALSE);
+		return (1);
 	}
 
 	argc -= optind;
@@ -7101,6 +7463,11 @@ zpool_do_offline(int argc, char **argv)
 			if (zpool_vdev_offline(zhp, argv[i], istmp) != 0)
 				ret = 1;
 		}
+
+		if (is_power_off) {
+			zpool_power_off(zhp, (char *)
+			    zpool_vdev_name_to_dev_path(zhp, (char *)argv[i]));
+		}
 	}
 
 	zpool_close(zhp);
@@ -7109,7 +7476,7 @@ zpool_do_offline(int argc, char **argv)
 }
 
 /*
- * zpool clear <pool> [device]
+ * zpool clear [-1]|[-nF] <pool> [device]
  *
  * Clear all errors associated with a pool or a particular device.
  */
@@ -7121,14 +7488,18 @@ zpool_do_clear(int argc, char **argv)
 	boolean_t dryrun = B_FALSE;
 	boolean_t do_rewind = B_FALSE;
 	boolean_t xtreme_rewind = B_FALSE;
+	boolean_t is_power_on = B_FALSE;
 	uint32_t rewind_policy = ZPOOL_NO_REWIND;
 	nvlist_t *policy = NULL;
 	zpool_handle_t *zhp;
 	char *pool, *device;
 
 	/* check options */
-	while ((c = getopt(argc, argv, "FnX")) != -1) {
+	while ((c = getopt(argc, argv, "1FnX")) != -1) {
 		switch (c) {
+		case '1':
+			is_power_on = B_TRUE;
+			break;
 		case 'F':
 			do_rewind = B_TRUE;
 			break;
@@ -7144,6 +7515,9 @@ zpool_do_clear(int argc, char **argv)
 			usage(B_FALSE);
 		}
 	}
+
+	if (libzfs_envvar_is_set("ZPOOL_TURN_ON_SLOT_POWER"))
+		is_power_on = B_TRUE;
 
 	argc -= optind;
 	argv += optind;
@@ -7183,6 +7557,15 @@ zpool_do_clear(int argc, char **argv)
 	if ((zhp = zpool_open_canfail(g_zfs, pool)) == NULL) {
 		nvlist_free(policy);
 		return (1);
+	}
+
+	if (is_power_on) {
+		if (device == NULL) {
+			zpool_power_on_pool_and_wait_for_devices(zhp);
+		} else {
+			zpool_power_on_and_disk_wait(zhp, (char *)
+			    zpool_vdev_name_to_dev_path(zhp, device));
+		}
 	}
 
 	if (zpool_clear(zhp, device, policy) != 0)
@@ -8801,6 +9184,10 @@ status_callback(zpool_handle_t *zhp, void *data)
 			printf_color(ANSI_BOLD, " %5s", gettext("SLOW"));
 		}
 
+		if (cbp->cb_print_power) {
+			printf_color(ANSI_BOLD, " %5s", gettext("POWER"));
+		}
+
 		if (cbp->vcdl != NULL)
 			print_cmd_columns(cbp->vcdl, 0);
 
@@ -8876,8 +9263,11 @@ zpool_do_status(int argc, char **argv)
 	char *cmd = NULL;
 
 	/* check options */
-	while ((c = getopt(argc, argv, "c:igLpPsvxDtT:")) != -1) {
+	while ((c = getopt(argc, argv, "1c:igLpPsvxDtT:")) != -1) {
 		switch (c) {
+		case '1':
+			cb.cb_print_power = B_TRUE;
+			break;
 		case 'c':
 			if (cmd != NULL) {
 				fprintf(stderr,

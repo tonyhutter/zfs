@@ -179,16 +179,10 @@ zpool_open_func(void *arg)
 		if (label_paths(rn->rn_hdl, rn->rn_config, &path, &devid))
 			return;
 
-		env = getenv("ZPOOL_IMPORT_UDEV_TIMEOUT_MS");
-		if ((env == NULL) || sscanf(env, "%d", &timeout) != 1 ||
-		    timeout < 0) {
-			timeout = DISK_LABEL_WAIT;
-		}
-
 		/*
 		 * Allow devlinks to stabilize so all paths are available.
 		 */
-		zpool_label_disk_wait(rn->rn_name, timeout);
+		zpool_disk_wait(rn->rn_name);
 
 		if (path != NULL) {
 			slice = zutil_alloc(hdl, sizeof (rdsk_node_t));
@@ -683,6 +677,24 @@ zpool_label_disk_wait(const char *path, int timeout_ms)
 }
 
 /*
+ * Simplified version of zpool_label_disk_wait() where we wait for a device
+ * to appear using the default timeouts.
+ */
+int
+zpool_disk_wait(const char *path)
+{
+	char *env;
+	int timeout;
+	env = secure_getenv("ZPOOL_IMPORT_UDEV_TIMEOUT_MS");
+	if ((env == NULL) || sscanf(env, "%d", &timeout) != 1 ||
+	    timeout < 0) {
+		timeout = DISK_LABEL_WAIT;
+	}
+
+	return (zpool_label_disk_wait(path, timeout));
+}
+
+/*
  * Encode the persistent devices strings
  * used for the vdev disk label
  */
@@ -770,8 +782,8 @@ no_dev:
  * key: The nvlist_t name (like ZPOOL_CONFIG_VDEV_ENC_SYSFS_PATH)
  */
 void
-update_vdev_config_dev_sysfs_path(nvlist_t *nv, const char *path, const char
-    *key)
+update_vdev_config_dev_sysfs_path(nvlist_t *nv, const char *path,
+    const char *key)
 {
 	char *upath, *spath;
 
@@ -780,9 +792,9 @@ update_vdev_config_dev_sysfs_path(nvlist_t *nv, const char *path, const char
 	spath = zfs_get_enclosure_sysfs_path(upath);
 
 	if (spath) {
-               (void) nvlist_add_string(nv, key, spath);
+		(void) nvlist_add_string(nv, key, spath);
 	} else {
-               (void) nvlist_remove_all(nv, key);
+		(void) nvlist_remove_all(nv, key);
 	}
 
 	free(upath);
@@ -802,7 +814,7 @@ sysfs_path_pool_vdev_iter_f(void *hdl_data, nvlist_t *nv, void *data)
 		return (1);
 
 	/* Rescan our enclosure sysfs path for this vdev */
-       update_vdev_config_dev_sysfs_path(nv, path,
+	update_vdev_config_dev_sysfs_path(nv, path,
 	    ZPOOL_CONFIG_VDEV_ENC_SYSFS_PATH);
 	return (0);
 }
