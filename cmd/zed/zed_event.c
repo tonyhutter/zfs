@@ -929,11 +929,8 @@ _zed_event_update_enc_sysfs_path(nvlist_t *nvl)
 {
 	const char *vdev_path;
 
-	if (nvlist_lookup_string(nvl, FM_EREPORT_PAYLOAD_ZFS_VDEV_PATH,
-	    &vdev_path) != 0) {
-		return; /* some other kind of event, ignore it */
-	}
-
+	vdev_path = fnvlist_lookup_string(nvl,
+	    FM_EREPORT_PAYLOAD_ZFS_VDEV_PATH);
 	if (vdev_path == NULL) {
 		return;
 	}
@@ -989,15 +986,15 @@ zed_event_service(struct zed_conf *zcp)
 		zed_log_msg(LOG_WARNING,
 		    "Failed to lookup zevent class (eid=%llu)", eid);
 	} else {
-		 /*
-		  * Special case: If we can dynamically detect an enclosure sysfs
-		  * path, then use that value rather than the one stored in the
-		  * vd->vdev_enc_sysfs_path.  There have been rare cases where
-		  * vd->vdev_enc_sysfs_path becomes outdated.  However, there
-		  * will be other times when we can not dynamically detect the
-		  * sysfs path (like if a disk disappears) and have to rely on the
-		  * old value for things like turning on the fault LED.
-		  */
+		/*
+		 * Special case: If we can dynamically detect an enclosure sysfs
+		 * path, then use that value rather than the one stored in the
+		 * vd->vdev_enc_sysfs_path.  There have been rare cases where
+		 * vd->vdev_enc_sysfs_path becomes outdated.  However, there
+		 * will be other times when we can not dynamically detect the
+		 * sysfs path (like if a disk disappears) and have to rely on
+		 * old old value for things like turning on the fault LED.
+		 */
 		_zed_event_update_enc_sysfs_path(nvl);
 
 		/* let internal modules see this event first */

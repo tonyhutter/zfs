@@ -3036,6 +3036,9 @@ zpool_vdev_is_interior(const char *name)
 	return (B_FALSE);
 }
 
+/*
+ * Lookup the nvlist for a given vdev.
+ */
 nvlist_t *
 zpool_find_vdev(zpool_handle_t *zhp, const char *path, boolean_t *avail_spare,
     boolean_t *l2cache, boolean_t *log)
@@ -3043,6 +3046,7 @@ zpool_find_vdev(zpool_handle_t *zhp, const char *path, boolean_t *avail_spare,
 	char *end;
 	nvlist_t *nvroot, *search, *ret;
 	uint64_t guid;
+	boolean_t __avail_spare, __l2cache, __log;
 
 	search = fnvlist_alloc();
 
@@ -3057,6 +3061,18 @@ zpool_find_vdev(zpool_handle_t *zhp, const char *path, boolean_t *avail_spare,
 
 	nvroot = fnvlist_lookup_nvlist(zhp->zpool_config,
 	    ZPOOL_CONFIG_VDEV_TREE);
+
+	/*
+	 * User can pass NULL for avail_spare, l2cache, and log, but
+	 * we still need to provide variables to vdev_to_nvlist_iter(), so
+	 * just point them to junk variables here.
+	 */
+	if (!avail_spare)
+		avail_spare = &__avail_spare;
+	if (!l2cache)
+		l2cache = &__l2cache;
+	if (!log)
+		log = &__log;
 
 	*avail_spare = B_FALSE;
 	*l2cache = B_FALSE;

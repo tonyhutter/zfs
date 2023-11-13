@@ -250,8 +250,8 @@ zfs_dev_flush(int fd)
 }
 
 void
-update_vdev_config_dev_sysfs_path(nvlist_t *nv, const char *path, const char
-    *key)
+update_vdev_config_dev_sysfs_path(nvlist_t *nv, const char *path,
+    const char *key)
 {
 	(void) nv;
 	(void) path;
