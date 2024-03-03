@@ -68,6 +68,7 @@ log_must mount_redacted -f $recvfs
 # when we re-enable redaction blkptrs.
 #
 #log_mustnot dd if=$recv_mnt/f1 of=/dev/null bs=512 count=1
+log_note "send_mnt1=$send_mnt, recv_mnt1=$recv_mnt"
 log_must diff $send_mnt/f2 $recv_mnt/f2
 log_must zfs rollback -R $clone@snap
 log_must zfs destroy -R $recvfs
