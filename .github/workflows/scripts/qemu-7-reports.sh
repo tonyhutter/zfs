@@ -5,6 +5,7 @@
 ######################################################################
 
 set -o pipefail
+ZFSDIR="$(pwd)"
 cd /var/tmp
 
 echo "VM disk usage before:"
@@ -34,5 +35,17 @@ for i in `seq 1 3`; do
   cat "vm${i}log.txt"
   echo "##[endgroup]"
 done
+
+# Merge all summaries
+echo "Merging summaries1, zfsdir $ZFSDIR"
+echo "current dir: $(ls -l)"
+echo "homedir dir: $(ls -l ~)"
+
+# The 'sed' line here removes ANSI color.  This is needed for merge_summary.awk
+# to work.  We add the color back in on the final line.
+cat vm*log.txt | grep -v 'Test[ :]' | \
+    sed -e 's/\x1b\[[0-9;]*m//g' | \
+    $ZFSDIR/.github/workflows/scripts/merge_summary.awk | \
+    $ZFSDIR/scripts/zfs-tests-color.sh
 
 exit $exitcode

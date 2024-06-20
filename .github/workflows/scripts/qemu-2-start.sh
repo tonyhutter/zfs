@@ -11,6 +11,7 @@ OS="$1"
 OSv=$OS
 
 # compressed with .zst extension
+BASE="https://github.com/mcmilk/openzfs-freebsd-images/releases/download/v2024-06-20v2"
 URLzs=""
 
 case "$OS" in
@@ -51,30 +52,34 @@ case "$OS" in
   freebsd13)
     OSNAME="FreeBSD 13"
     OSv="freebsd13.0"
-    # URL="https://download.freebsd.org/ftp/snapshots/amd64"
-    # freebsd images don't have clout-init within it! :(
-    # -> workaround: provide own images
-    URLzs="https://openzfs.de/freebsd/amd64-freebsd-13.3.qcow2.zst"
+    URLzs="$BASE/amd64-freebsd-13.3-STABLE.qcow2.zst"
     BASH="/usr/local/bin/bash"
     ;;
   freebsd14)
     OSNAME="FreeBSD 14"
     OSv="freebsd14.0"
-    URLzs="https://openzfs.de/freebsd/amd64-freebsd-14.0.qcow2.zst"
+    URLzs="$BASE/amd64-freebsd-14.1-STABLE.qcow2.zst"
     BASH="/usr/local/bin/bash"
     ;;
   freebsd15)
     OSNAME="FreeBSD 15"
     OSv="freebsd14.0"
-    URLzs="https://openzfs.de/freebsd/amd64-freebsd-15.0.qcow2.zst"
+    URLzs="$BASE/amd64-freebsd-15.0-CURRENT.qcow2.zst"
     BASH="/usr/local/bin/bash"
+    ;;
+  tumbleweed)
+    OSNAME="openSUSE Tumbleweed"
+    OSv="opensusetumbleweed"
+    MIRROR="http://opensuse-mirror-gce-us.susecloud.net"
+    URL="$MIRROR/tumbleweed/appliances/openSUSE-MicroOS.x86_64-OpenStack-Cloud.qcow2"
     ;;
   ubuntu22)
     OSNAME="Ubuntu 22.04"
     OSv="ubuntu22.04"
-    #URL="https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img"
-    #URL="https://mirrors.cloud.tencent.com/ubuntu-cloud-images/jammy/current/jammy-server-cloudimg-amd64.img"
-    URL="https://mirror.citrahost.com/ubuntu-cloud-images/jammy/current/jammy-server-cloudimg-amd64.img"
+    MIRROR="https://cloud-images.ubuntu.com"
+    MIRROR="https://mirrors.cloud.tencent.com/ubuntu-cloud-images"
+    MIRROR="https://mirror.citrahost.com/ubuntu-cloud-images"
+    URL="$MIRROR/jammy/current/jammy-server-cloudimg-amd64.img"
     ;;
   ubuntu24)
     OSNAME="Ubuntu 24.04"
@@ -113,8 +118,8 @@ qemu-img convert -q -f qcow2 -O qcow2 -c \
   -o compression_type=zstd,preallocation=off $IMG $DISK || exit 111
 rm -f $IMG || exit 111
 
-echo "Resizing image to 20GiB ..."
-qemu-img resize -q $DISK 20G || exit 111
+echo "Resizing image to 50GiB ..."
+qemu-img resize -q $DISK 50G || exit 111
 
 PUBKEY=`cat ~/.ssh/id_ed25519.pub`
 cat <<EOF > /tmp/user-data
@@ -145,16 +150,22 @@ for i in `seq 0 3`; do
     "<host mac='52:54:00:83:79:0$i' ip='192.168.122.1$i'/>" --live --config
 done
 
+# We need 'model=e1000' for FreeBSD 13
+#
+# We may or may not need --machine 'pc-q35-6.1' or newer.
+# From: https://chrisirwin.ca/posts/discard-with-kvm-2020/
+#
 sudo virt-install \
   --os-variant $OSv \
   --name "openzfs" \
   --cpu host-passthrough \
+  --machine 'pc-q35-2.10' \
   --virt-type=kvm --hvm \
   --vcpus=4,sockets=1 \
-  --memory $((1024*4)) \
+  --memory $((1024*8)) \
   --memballoon model=none \
   --graphics none \
-  --network bridge=virbr0,model=virtio,mac='52:54:00:83:79:00' \
+  --network bridge=virbr0,model=e1000,mac='52:54:00:83:79:00' \
   --cloud-init user-data=/tmp/user-data \
   --disk $DISK,format=qcow2,bus=virtio \
-  --import --noautoconsole 2>/dev/null
+  --import --noautoconsole

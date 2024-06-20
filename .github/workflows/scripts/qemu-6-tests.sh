@@ -66,14 +66,17 @@ function gettests() {
     part1)
       # ~1h 40m (archlinux)
       echo "cli_root"
+#    echo "zpool_add,zpool_create,zpool_export"
       ;;
     part2)
       # ~2h 5m (archlinux)
       ls $TF|grep '^[a-m]'|grep -v "cli_root"|xargs|tr -s ' ' ','
+#    echo "zfs_receive,zpool_initialize"
       ;;
     part3)
       # ~2h
       ls $TF|grep '^[n-z]'|xargs|tr -s ' ' ','
+#    echo "zfs_unshare,zpool_destroy"
       ;;
   esac
 }
@@ -83,7 +86,7 @@ function gettestsD() {
   echo -n "-T "
   case "$1" in
     part1)
-      echo "checksum"
+      echo "checksum,zpool_trim"
       ;;
     part2)
       echo "casenorm,trim"
@@ -102,19 +105,19 @@ case "$1" in
     TDIR="/usr/local/share/zfs"
     freebsd
     OPTS=`gettests $2`
-    if [ -e /dev/vtbd1 ] && [ -e /dev/vtbd2 ] && [ -e /dev/vtbd3 ] ; then
-      DISKS="/dev/vtbd1 /dev/vtbd2 /dev/vtbd3"
-      export DISKS
-    fi
+#    if [ -e /dev/vtbd1 ] && [ -e /dev/vtbd2 ] && [ -e /dev/vtbd3 ] ; then
+#      DISKS="/dev/vtbd1 /dev/vtbd2 /dev/vtbd3"
+#      export DISKS
+#    fi
     ;;
   *)
     TDIR="/usr/share/zfs"
     OPTS=`gettests $2`
     linux
-    if [ -e /dev/vdb ] && [ -e /dev/vdc ] && [ -e /dev/vdd ] ; then
-      DISKS="/dev/vdb /dev/vdc /dev/vdd"
-      export DISKS
-    fi
+#    if [ -e /dev/vdb ] && [ -e /dev/vdc ] && [ -e /dev/vdd ] ; then
+#      DISKS="/dev/vdb /dev/vdc /dev/vdd"
+#      export DISKS
+#    fi
     ;;
 esac
 

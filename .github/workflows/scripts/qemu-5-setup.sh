@@ -33,9 +33,9 @@ for i in `seq 1 3`; do
   echo "Generating vm$i with 3x${SIZE}GiB disks."
   sudo mkdir -p $BASE
   sudo qemu-img create $OPTS -b /mnt/openzfs.qcow2 -F qcow2 "$BASE/vm$i.qcow2"
-  sudo qemu-img create $OPTS "$BASE/vm$i-1.qcow2" ${SIZE}G
-  sudo qemu-img create $OPTS "$BASE/vm$i-2.qcow2" ${SIZE}G
-  sudo qemu-img create $OPTS "$BASE/vm$i-3.qcow2" ${SIZE}G
+#  sudo qemu-img create $OPTS "$BASE/vm$i-1.qcow2" ${SIZE}G
+#  sudo qemu-img create $OPTS "$BASE/vm$i-2.qcow2" ${SIZE}G
+#  sudo qemu-img create $OPTS "$BASE/vm$i-3.qcow2" ${SIZE}G
 
   cat <<EOF > /tmp/user-data
 #cloud-config
@@ -72,10 +72,12 @@ EOF
     --cloud-init user-data=/tmp/user-data \
     --network bridge=virbr0,model=virtio,mac="52:54:00:83:79:0$i" \
     --disk "$BASE/vm$i.qcow2",format=qcow2,bus=virtio,driver.discard=unmap \
-    --disk "$BASE/vm$i-1.qcow2",format=qcow2,bus=virtio,driver.discard=unmap \
-    --disk "$BASE/vm$i-2.qcow2",format=qcow2,bus=virtio,driver.discard=unmap \
-    --disk "$BASE/vm$i-3.qcow2",format=qcow2,bus=virtio,driver.discard=unmap \
     --import --noautoconsole >/dev/null
+
+#    --disk "$BASE/vm$i-1.qcow2",format=qcow2,bus=virtio,driver.discard=unmap \
+#    --disk "$BASE/vm$i-2.qcow2",format=qcow2,bus=virtio,driver.discard=unmap \
+#    --disk "$BASE/vm$i-3.qcow2",format=qcow2,bus=virtio,driver.discard=unmap \
+#    --import --noautoconsole >/dev/null
 done
 
 # check if the machines are okay

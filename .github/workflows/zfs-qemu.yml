@@ -11,7 +11,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [almalinux8, almalinux9, archlinux, centos-stream9, fedora39, fedora40, debian11, debian12, freebsd13, freebsd14, freebsd15, ubuntu22, ubuntu24]
+#        os: [almalinux8, almalinux9, archlinux, centos-stream9, fedora39, fedora40, debian11, debian12, freebsd13, freebsd14, freebsd15, ubuntu22, ubuntu24]
+        os: [almalinux8, almalinux9, fedora39, fedora40, debian11, debian12, freebsd13, freebsd14, freebsd15, ubuntu22, ubuntu24]
+#        os: [freebsd13]
+
     runs-on: ubuntu-24.04
     steps:
     - uses: actions/checkout@v4
@@ -101,6 +104,17 @@ jobs:
         name: Logs-functional-${{ matrix.os }}
         path: qemu-${{ matrix.os }}.tar
         if-no-files-found: ignore
+
+    - name: Simple test results
+      if: success() || failure()
+      run: |
+        ZFSDIR="$(pwd)"
+        cd /var/tmp/test_results
+        cat vm*log.txt | grep -v 'Test[ :]' | \
+            sed -e 's/\x1b\[[0-9;]*m//g' | \
+            $ZFSDIR/.github/workflows/scripts/merge_summary.awk | \
+            $ZFSDIR/scripts/zfs-tests-color.sh
+        awk '/\[FAIL\]|\[KILLED\]/{ show=1; print; next; }; /\[SKIP\]|\[PASS\]/{ show=0; } show' ./vm*/current/log
 
   cleanup:
     if: always()

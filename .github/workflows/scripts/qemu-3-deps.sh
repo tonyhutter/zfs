@@ -6,6 +6,8 @@
 
 set -eu
 
+OS="$1"
+
 function archlinux() {
   echo "##[group]Running pacman -Syu"
   sudo pacman -Syu --noconfirm
@@ -44,6 +46,16 @@ function debian() {
 
 function freebsd() {
   export ASSUME_ALWAYS_YES="YES"
+
+#  if [ "$OS" == "freebsd13" ] ; then
+#      echo "FreeBSD 13 bootstrap pkg"
+#        ping -c10 www.FreeBSD.org || true
+#        which wget || true
+#    
+#      sudo pkg-static bootstrap -f || true
+#      sudo pkg bootstrap -f || true
+#      sudo pkg update -f || true
+#  fi
 
   echo "##[group]Install Development Tools"
   sudo pkg install -y autoconf automake autotools base64 fio gdb git \
@@ -112,6 +124,8 @@ case "$1" in
     rhel
     ;;
   freebsd*)
+    echo "swap info" 
+    sudo swapinfo -k || true
     freebsd
     ;;
   ubuntu*)
