@@ -68,6 +68,7 @@ log_must mount_redacted -f $recvfs
 # when we re-enable redaction blkptrs.
 #
 #log_mustnot dd if=$recv_mnt/f1 of=/dev/null bs=512 count=1
+log_note "send_mnt1=$send_mnt, recv_mnt1=$recv_mnt"
 log_must diff $send_mnt/f2 $recv_mnt/f2
 log_must zfs rollback -R $clone@snap
 log_must zfs destroy -R $recvfs
@@ -96,6 +97,7 @@ log_must zfs destroy -R $clone2
 log_must eval "zfs send -i $sendfs#book2 --redact book3 $sendfs@snap2 >$stream"
 log_must eval "zfs recv $recvfs <$stream"
 log_must mount_redacted -f $recvfs
+log_note "send_mnt1=$send_mnt, recv_mnt1=$recv_mnt"
 log_must [ "$(ls $send_mnt)" == "$(ls $recv_mnt)" ]
 log_must zfs destroy -R $recvfs
 log_must zfs rollback -R $sendfs@snap
