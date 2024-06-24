@@ -46,6 +46,9 @@ function cleanup
 {
 	rm -rf /$TESTDIR/cp_stress
 }
+if is_freebsd ; then
+	log_pass "Skip until #16297 is fixed"
+fi
 
 log_assert "Run the 'seekflood' binary repeatedly to try to trigger #15526"
 
