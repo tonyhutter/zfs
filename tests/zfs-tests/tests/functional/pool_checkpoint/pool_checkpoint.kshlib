@@ -233,6 +233,7 @@ function test_verify_pre_checkpoint_state
 	# pool as read-only without rewinding on-disk we
 	# can't really use zdb on it.
 	#
+	log_note "MEMINFO: $(top |grep -Em2 '^(Mem|Swap):')"
 	if [[ "$1" != "ro-check" ]] ; then
 		log_must zdb $TESTPOOL
 	fi

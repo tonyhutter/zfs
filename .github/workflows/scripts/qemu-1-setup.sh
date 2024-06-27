@@ -6,6 +6,30 @@
 
 set -eu
 
+echo "Info:"
+mount
+lsblk
+sudo swapon --show
+
+ls -l /mnt/swapfile
+
+echo "resize swap"
+
+# Turn swap off
+sudo swapoff -a
+
+# Create an empty swapfile
+sudo dd if=/dev/zero of=/mnt/swapfile bs=1G count=16
+
+# Set the correct permissions
+sudo chmod 0600 /mnt/swapfile
+
+sudo mkswap /mnt/swapfile
+sudo swapon /mnt/swapfile
+
+echo "Swap now:"
+sudo swapon --show
+
 # docker isn't needed, free some memory
 sudo systemd-run --wait docker system prune --force --all --volumes
 sudo systemctl stop docker.socket
@@ -40,3 +64,8 @@ sudo fstrim -a
 
 # generate ssh keys
 ssh-keygen -t ed25519 -f ~/.ssh/id_ed25519 -q -N ""
+
+# enable zswap
+echo 1 | sudo tee /sys/module/zswap/parameters/enabled
+echo lz4 | sudo tee /sys/module/zswap/parameters/compressor
+
