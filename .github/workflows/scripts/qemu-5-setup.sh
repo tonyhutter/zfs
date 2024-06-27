@@ -5,6 +5,7 @@
 ######################################################################
 
 set -eu
+NUM_VMS=$1
 
 # machine not needed anymore
 while pidof /usr/bin/qemu-system-x86_64 >/dev/null; do sleep 1; done
@@ -17,16 +18,18 @@ sudo virsh undefine openzfs
 PUBKEY=`cat ~/.ssh/id_ed25519.pub`
 OSv=`cat /var/tmp/osvariant.txt`
 OS=`cat /var/tmp/os.txt`
-for vm in `seq 1 3`; do
-  echo "Generating disk for vm$vm ..."
-  sudo qemu-img create -q -f qcow2 -F qcow2 \
-    -o compression_type=zstd,cluster_size=128k \
-    -b /mnt/openzfs.qcow2 "/mnt/vm$vm.qcow2"
+
+for i in `seq 1 $NUM_VMS`; do
+
+  OPTS="-q -f qcow2 -o compression_type=zstd,preallocation=off,cluster_size=128k"
+
+  echo "Generating vm$i disks."
+  sudo qemu-img create $OPTS -b /mnt/openzfs.qcow2 -F qcow2 "/mnt/vm$i.qcow2"
 
   cat <<EOF > /tmp/user-data
 #cloud-config
 
-fqdn: vm$vm
+fqdn: vm$i
 
 # user:zfs password:1
 users:
@@ -46,23 +49,33 @@ growpart:
   ignore_growroot_disabled: false
 EOF
 
+  # Each runner has 4 CPUs and 8GB RAM
+  CPUS=4
+  MEMGB=8
+
   sudo virt-install \
     --os-variant $OSv \
-    --name "vm$vm" \
+    --name "vm$i" \
     --cpu host-passthrough \
     --virt-type=kvm --hvm \
-    --vcpus=2,sockets=1 \
-    --memory $((1024*4)) \
+    --vcpus=$CPUS,sockets=1 \
+    --memory $((1024*$MEMGB)) \
     --memballoon model=none \
     --graphics none \
     --cloud-init user-data=/tmp/user-data \
-    --network bridge=virbr0,model=e1000,mac="52:54:00:83:79:0$vm" \
-    --disk /mnt/vm$vm.qcow2,bus=virtio,cache=writeback,format=qcow2,driver.discard=unmap \
+    --network bridge=virbr0,model=e1000,mac="52:54:00:83:79:0$i" \
+    --disk /mnt/vm$i.qcow2,bus=virtio,cache=writeback,format=qcow2,driver.discard=unmap \
     --import --noautoconsole >/dev/null
 done
 
 # check if the machines are okay
-echo "Waiting for vm's to come up..."
-while true; do ssh 2>/dev/null zfs@192.168.122.11 "uname -a" && break; done
-while true; do ssh 2>/dev/null zfs@192.168.122.12 "uname -a" && break; done
-while true; do ssh 2>/dev/null zfs@192.168.122.13 "uname -a" && break; done
+echo "Waiting for VMs to come up..."
+
+for i in $(seq 1 $NUM_VMS); do
+    LAST=$(($i + 10))
+    while true; do
+        ssh 2>/dev/null zfs@192.168.122.$LAST "uname -a" && break
+    done
+done
+
+echo "All done waiting for $NUM_VMS VMs"

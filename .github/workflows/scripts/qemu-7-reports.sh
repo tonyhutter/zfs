@@ -4,6 +4,8 @@
 # 7) output the results of the previous stage in an ordered way
 ######################################################################
 
+NUM_VMS=$1
+
 set -o pipefail
 cd /var/tmp
 
@@ -20,7 +22,7 @@ BASE="$HOME/work/zfs/zfs"
 MERGE="$BASE/.github/workflows/scripts/merge_summary.awk"
 EXIT=0
 
-for i in `seq 1 3`; do
+for i in `seq 1 $NUM_VMS`; do
   f="exitcode.vm$i"
   scp 2>/dev/null zfs@192.168.122.1$i:/var/tmp/exitcode.txt $f
   test -f $f || echo 2 > $f
@@ -37,6 +39,8 @@ for i in `seq 1 3`; do
   echo "##[endgroup]"
 done
 
+
 # all tests without grouping:
-$MERGE vm{1,2,3}log.txt | $BASE/scripts/zfs-tests-color.sh
-exit $EXIT
+cat vm*log.txt | $MERGE | $BASE/scripts/zfs-tests-color.sh
+
+exit 0

@@ -51,7 +51,8 @@ BEGIN {
 /SKIP/{ if (state=="pass_count") {skip += $2}}
 /Running Time/{
 	state="";
-	running[i]=$3;
+	running[running_lines]=$3;
+	running_lines++
 	split($3, arr, ":")
 	total += arr[1] * 60 * 60;
 	total += arr[2] * 60;
@@ -86,7 +87,12 @@ END {
 	print "FAIL\t"fail
 	print "SKIP\t"skip
 	print ""
-	print "Running Time:\t"strftime("%T", total, 1)
+	# Print total run time of all VMs together, then individual VM test
+	# totals.
+	printf("Running Time:\t%s (", strftime("%T", total, 1))
+	for (j in running)
+		printf(" %s", running[j])
+	print " )"
 	if (pass+fail+skip > 0) {
 		percent_passed=(pass/(pass+fail+skip) * 100)
 	}

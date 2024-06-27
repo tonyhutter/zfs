@@ -1,20 +1,25 @@
 name: zfs-qemu
 
 on:
-  push:
+#  push:
   pull_request:
 
 jobs:
 
   qemu-vm:
-    name: QEMU
+    name: ""
+    # Number of VMs to spawn per github runner.  The ZTS tests are split
+    # up and run across this number of VMs.
     env:
-      num_vms: 3
+      num_vms: 2
     strategy:
       fail-fast: false
       matrix:
-        # os: [almalinux8, almalinux9, archlinux, centos-stream9, fedora39, fedora40, debian11, debian12, freebsd13, freebsd14, freebsd15, ubuntu20, ubuntu22, ubuntu24]
-        os: [almalinux8, almalinux9, debian11, debian12, fedora39, fedora40, freebsd13, freebsd13r, freebsd14, freebsd14r, freebsd15]
+#        os: [almalinux8, almalinux9, archlinux, centos-stream9, fedora39, fedora40, debian11, debian12, freebsd13, freebsd14, freebsd15, ubuntu22, ubuntu24]
+#        os: [almalinux8, almalinux9, fedora39, fedora40, debian11, debian12, freebsd13, freebsd14, freebsd15, ubuntu22, ubuntu24]
+        os: [almalinux8, almalinux9, fedora39, fedora40, freebsd13, freebsd14, freebsd15, ubuntu22, ubuntu24]
+#        os: [almalinux8]
+
     runs-on: ubuntu-24.04
     steps:
     - uses: actions/checkout@v4
@@ -62,37 +67,63 @@ jobs:
     - name: Setup testing machines
       timeout-minutes: 5
       run: |
-        .github/workflows/scripts/qemu-5-setup.sh
+        .github/workflows/scripts/qemu-5-setup.sh ${{ ENV.num_vms }}
+        echo "setting up serial consoles"
         # Save the VM's serial output (ttyS0) to /var/tmp/console.txt
         # - ttyS0 on the VM corresponds to a local /dev/pty/N entry
         # - use 'virsh ttyconsole' to lookup the /dev/pty/N entry
         RESPATH="/var/tmp/test_results"
-        for i in $(seq 1 ${{ ENV.num_vms }}) ; do
-          mkdir -p $RESPATH/vm$i
-          read "pty" <<< $(sudo virsh ttyconsole "vm$i")
-          sudo nohup bash -c "cat $pty > $RESPATH/vm$i/console.txt" &
+        mkdir -p /var/tmp
+        NVMS=${{ ENV.num_vms }}
+        echo "begin loop, $NVMS"
+        sudo virsh list
+        ls -l /home/runner/work/_temp/*.sh
+        echo "--"
+        cat "/home/runner/work/_temp/$(ls -Str /home/runner/work/_temp/ | tail -n 1)"
+        echo "--"
+        VALS="$(seq 1 ${{ ENV.num_vms }})"
+        for i in $VALS ; do
+          echo "Starting up console $i"
+          mkdir -p "$RESPATH/vm$i"
+          read pty <<< $(sudo virsh ttyconsole "vm$i")
+          echo "VM$i pty is $pty"
+          sudo nohup bash -c "cat $pty" > $RESPATH/vm$i/console.txt &
+          echo "next VM"
         done
         echo "Console logging for ${{ matrix.os }} VMs started."
 
     - name: Run tests
       timeout-minutes: 270
       run: |
-        .github/workflows/scripts/qemu-6-tests.sh
+        .github/workflows/scripts/qemu-6-tests.sh ${{ ENV.num_vms }}
 
-    - name: Test reports
+    - name: Create test reports
       timeout-minutes: 10
       run: |
-        .github/workflows/scripts/qemu-7-reports.sh
+        .github/workflows/scripts/qemu-7-reports.sh ${{ ENV.num_vms }}
 
     - name: Prepare artifacts
       timeout-minutes: 10
       if: success() || failure()
       run: |
+        ZFSDIR="$(pwd)"
         RESPATH="/var/tmp/test_results"
         for i in $(seq 1 ${{ ENV.num_vms }}) ; do
           rsync -arL zfs@192.168.122.1$i:$RESPATH/current $RESPATH/vm$i || true
           scp zfs@192.168.122.1$i:"/var/tmp/*.txt" $RESPATH/vm$i || true
         done
+
+        echo "Preparing summary"
+        cat /var/tmp/vm*log.txt | grep -v 'Test[ :]' | \
+            sed -e 's/\x1b\[[0-9;]*m//g' | \
+            $ZFSDIR/.github/workflows/scripts/merge_summary.awk | \
+            $ZFSDIR/scripts/zfs-tests-color.sh > $RESPATH/summary.txt
+
+        cp $RESPATH/summary.txt $RESPATH/summary-with-logs.txt
+        awk '/\[FAIL\]|\[KILLED\]/{ show=1; print; next; }; /\[SKIP\]|\[PASS\]/{ show=0; } show' \
+            $RESPATH/vm*/current/log >> $RESPATH/summary-failure-logs.txt
+
+        cd "$ZFSDIR"
         cp -f /var/tmp/*.txt $RESPATH || true
         tar cf qemu-${{ matrix.os }}.tar -C $RESPATH -h . || true
 
@@ -102,6 +133,36 @@ jobs:
         name: Logs-functional-${{ matrix.os }}
         path: qemu-${{ matrix.os }}.tar
         if-no-files-found: ignore
+
+    - name: Test Summary
+      if: success() || failure()
+      run: |
+        cat /var/tmp/test_results/summary.txt
+
+        echo "Full logs:"
+        echo 'Artifact URL is ${{ steps.artifact-upload-step.outputs.artifact-url }}'
+        echo '${{ steps.artifact-upload-step.outputs.artifact-url }}'
+
+        # Did we have a test failure?
+        if grep -vq 0 /var/tmp/test_results/vm*/exitcode.txt ; then
+            echo "One or more tests failed"
+            echo "### FIND "
+            find /var/tmp/test_results/
+            echo "### END FIND"
+            cat /var/tmp/test_results/summary-failure-logs.txt
+            # On test failures, the github test results page will autoscroll to the
+            # bottom of summary-with-logs.txt.  The first thing we want to see
+            # is the summary page of failures so print another copy of it at
+            # the bottom of the "page" for easy access.
+            echo ""
+            cat /var/tmp/test_results/summary.txt
+
+            echo "Full logs:"
+            echo '${{ steps.artifact-upload-step.outputs.artifact-url }}'
+            false
+        else
+            true
+        fi
 
   cleanup:
     if: always()

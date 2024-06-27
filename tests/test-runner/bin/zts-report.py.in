@@ -446,7 +446,7 @@ if __name__ == "__main__":
     results, logdir = process_results(args.logfile)
 
     if not results:
-        print("\n\nNo test results were found.")
+        print("\n\nNo test results were found in :", args.logfile)
         print("Log directory:", logdir)
         sys.exit(0)
 
