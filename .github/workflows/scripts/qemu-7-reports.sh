@@ -4,6 +4,8 @@
 # 7) output the results of the previous stage in an ordered way
 ######################################################################
 
+NUM_VMS=$1
+
 set -o pipefail
 ZFSDIR="$(pwd)"
 cd /var/tmp
@@ -14,7 +16,7 @@ echo "and afterwards:"
 cat disk-afterwards.txt
 
 exitcode=0
-for i in `seq 1 3`; do
+for i in `seq 1 $NUM_VMS`; do
   f="exitcode.vm$i"
   scp 2>/dev/null zfs@192.168.122.1$i:/var/tmp/exitcode.txt $f
   test -f $f || echo 2 > $f

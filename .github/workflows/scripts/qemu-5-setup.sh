@@ -5,6 +5,7 @@
 ######################################################################
 
 set -eu
+NUM_VMS=$1
 
 # machine not needed anymore
 while pidof /usr/bin/qemu-system-x86_64 >/dev/null; do sleep 1; done
@@ -17,7 +18,7 @@ sudo virsh undefine openzfs
 PUBKEY=`cat ~/.ssh/id_ed25519.pub`
 OSv=`cat /var/tmp/osvariant.txt`
 OS=`cat /var/tmp/os.txt`
-for i in `seq 1 3`; do
+for i in `seq 1 $NUM_VMS`; do
 
   if [ $i = 1 ]; then
     # 8 vdisks on /mnt
@@ -60,13 +61,17 @@ growpart:
   ignore_growroot_disabled: false
 EOF
 
+  # Each runner has 4 CPUs and 16GB mem.
+  CPUS=4
+  MEMGB=8
+
   sudo virt-install \
     --os-variant $OSv \
     --name "vm$i" \
     --cpu host-passthrough \
     --virt-type=kvm --hvm \
-    --vcpus=3,sockets=1 \
-    --memory $((1024*4)) \
+    --vcpus=$CPUS,sockets=1 \
+    --memory $((1024*$MEMGB)) \
     --memballoon model=none \
     --graphics none \
     --cloud-init user-data=/tmp/user-data \

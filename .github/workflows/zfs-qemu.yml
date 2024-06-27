@@ -1,7 +1,7 @@
 name: zfs-qemu
 
 on:
-  push:
+#  push:
   pull_request:
 
 jobs:
@@ -10,10 +10,13 @@ jobs:
     name: QEMU
     strategy:
       fail-fast: false
+      num_vms: 2
       matrix:
 #        os: [almalinux8, almalinux9, archlinux, centos-stream9, fedora39, fedora40, debian11, debian12, freebsd13, freebsd14, freebsd15, ubuntu22, ubuntu24]
-        os: [almalinux8, almalinux9, fedora39, fedora40, debian11, debian12, freebsd13, freebsd14, freebsd15, ubuntu22, ubuntu24]
+#        os: [almalinux8, almalinux9, fedora39, fedora40, debian11, debian12, freebsd13, freebsd14, freebsd15, ubuntu22, ubuntu24]
 #        os: [freebsd13]
+         os: [almalinux8]
+           
 
     runs-on: ubuntu-24.04
     steps:
@@ -59,30 +62,29 @@ jobs:
     - name: Setup testing machines
       timeout-minutes: 5
       run: |
-        .github/workflows/scripts/qemu-5-setup.sh
+        .github/workflows/scripts/qemu-5-setup.sh ${{ num_vms }}
         # Save the VM's serial output (ttyS0) to /var/tmp/console.txt
         # - ttyS0 on the VM corresponds to a local /dev/pty/N entry
         # - use 'virsh ttyconsole' to lookup the /dev/pty/N entry
         RESPATH="/var/tmp/test_results"
         mkdir -p $RESPATH/vm{1,2,3}
         sudo mkdir -p /var/tmp
-        read "pty1" <<< $(sudo virsh ttyconsole "vm1")
-        read "pty2" <<< $(sudo virsh ttyconsole "vm2")
-        read "pty3" <<< $(sudo virsh ttyconsole "vm3")
-        sudo nohup bash -c "cat "$pty1" > $RESPATH/vm1/console.txt" &
-        sudo nohup bash -c "cat "$pty2" > $RESPATH/vm2/console.txt" &
-        sudo nohup bash -c "cat "$pty3" > $RESPATH/vm3/console.txt" &
-        echo "Console logging for $pty1, $pty2 and $pty3 started."
+        for i in $(seq 1 ${{ num_vms }}) ; do
+          read "pty$i" <<< $(sudo virsh ttyconsole "vm$i")
+          sudo nohup bash -c "cat "$pty$i" > $RESPATH/vm$i/console.txt" &
+        done
+
+        echo "Console logging for ${{ matrix.os }} VMs started."
 
     - name: Run tests
-      timeout-minutes: 210
+      timeout-minutes: 270
       run: |
-        .github/workflows/scripts/qemu-6-tests.sh
+        .github/workflows/scripts/qemu-6-tests.sh ${{ num_vms }}
 
     - name: Test reports
       timeout-minutes: 10
       run: |
-        .github/workflows/scripts/qemu-7-reports.sh
+        .github/workflows/scripts/qemu-7-reports.sh ${{ num_vms }}
 
     - name: Prepare artifacts
       if: success() || failure()

@@ -6,42 +6,59 @@
 
 set -o pipefail
 
-if [ -z "$1" ]; then
+# There's two ways this script gets run, on the runner or on the VM.
+# The args are a little different
+#
+# On the runner
+# ./qemu-6-tests.sh [OS] [num_vms]
+#
+# On the VM
+# ./qemu-6-tests.sh [group/all]
+#
+# Examples:
+#
+# Run tests on three VMs
+# ./qemu-6-tests.sh 3
+#
+# Divide the test list up into thirds, and run the 2nd group of tests
+# of the three on fedora40.
+# ./qemu-6-tests.sh fedora40 2/3 
+
+if [ -z "$2" ]; then
+  NUM_VMS=$1
+
   # called directly on the runner
   P="/var/tmp"
 
   cd $P
   OS=`cat os.txt`
-  IP1="192.168.122.11"
-  IP2="192.168.122.12"
-  IP3="192.168.122.13"
 
   df -h / /mnt > /var/tmp/disk-before.txt
+  for i in $(seq 1 $NUM_VMS) ; do
+      LAST_DIGIT=((11 + $i))
+      IP="192.168.122.$LAST_DIGIT"
 
-  # start as daemon and log stdout
-  SSH=`which ssh`
-  CMD='$HOME/zfs/.github/workflows/scripts/qemu-6-tests.sh'
-  daemonize -c $P -p vm1.pid -o vm1log.txt -- \
-    $SSH zfs@$IP1 $CMD $OS part1
-  daemonize -c $P -p vm2.pid -o vm2log.txt -- \
-    $SSH zfs@$IP2 $CMD $OS part2
-  daemonize -c $P -p vm3.pid -o vm3log.txt -- \
-    $SSH zfs@$IP3 $CMD $OS part3
+      # start as daemon and log stdout
+      SSH=`which ssh`
+      CMD='$HOME/zfs/.github/workflows/scripts/qemu-6-tests.sh'
+      daemonize -c $P -p vm$i.pid -o vm${i}log.txt -- \
+        $SSH zfs@$IP $CMD $OS "$i/$NUM_VMS"
 
-  # give us the output of stdout + stderr - with prefix ;)
-  tail -fq vm1log.txt | sed -e "s/^/vm1: /g" &
-  tail -fq vm2log.txt | sed -e "s/^/vm2: /g" &
-  tail -fq vm3log.txt | sed -e "s/^/vm3: /g" &
+      # give us the output of stdout + stderr - with prefix ;)
+      tail -fq vm${i}log.txt | sed -e "s/^/vm"$i": /g" &
 
-  # wait for all vm's to finnish
-  tail --pid=`cat vm1.pid` -f /dev/null
-  tail --pid=`cat vm2.pid` -f /dev/null
-  tail --pid=`cat vm3.pid` -f /dev/null
+      # wait for all vm's to finnish
+      tail --pid=`cat vm${i}.pid` -f /dev/null
+  done
 
   # kill the tail/sed combo
   killall tail
   df -h / /mnt > /var/tmp/disk-afterwards.txt
   exit 0
+else
+    # Called from inside VM
+    OS=$1
+    FRACTION=$2
 fi
 
 function freebsd() {
@@ -104,7 +121,7 @@ case "$1" in
   freebsd*)
     TDIR="/usr/local/share/zfs"
     freebsd
-    OPTS=`gettests $2`
+#    OPTS=`gettestsD $2`
 #    if [ -e /dev/vtbd1 ] && [ -e /dev/vtbd2 ] && [ -e /dev/vtbd3 ] ; then
 #      DISKS="/dev/vtbd1 /dev/vtbd2 /dev/vtbd3"
 #      export DISKS
@@ -112,7 +129,7 @@ case "$1" in
     ;;
   *)
     TDIR="/usr/share/zfs"
-    OPTS=`gettests $2`
+#    OPTS=`gettestsD $2`
     linux
 #    if [ -e /dev/vdb ] && [ -e /dev/vdc ] && [ -e /dev/vdd ] ; then
 #      DISKS="/dev/vdb /dev/vdc /dev/vdd"
@@ -124,7 +141,7 @@ esac
 # this part runs inside qemu, finally: run tests
 uname -a > /var/tmp/uname.txt
 cd $HOME/zfs
-$TDIR/zfs-tests.sh -vKR -s 3G $OPTS | scripts/zfs-tests-color.sh
+$TDIR/zfs-tests.sh -vKR -s 3G -T $FRACTION | scripts/zfs-tests-color.sh
 RV=$?
 echo $RV > /var/tmp/exitcode.txt
 exit $RV
