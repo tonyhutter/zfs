@@ -2,7 +2,7 @@ name: zfs-qemu
 
 on:
   push:
-  pull_request:
+#  pull_request:
 
 jobs:
 
@@ -13,10 +13,11 @@ jobs:
       matrix:
         # all:
         # os: [almalinux8, almalinux9, archlinux, centos-stream9, fedora39, fedora40, debian11, debian12, freebsd13, freebsd13r, freebsd14, freebsd14r, freebsd15, ubuntu20, ubuntu22, ubuntu24]
-        os: [almalinux8, almalinux9, centos-stream9, fedora39, fedora40, debian11, debian12, freebsd13, freebsd13r, freebsd14, freebsd14r, freebsd15, ubuntu20, ubuntu22, ubuntu24]
+        # os: [almalinux8, almalinux9, centos-stream9, fedora39, fedora40, debian11, debian12, freebsd13, freebsd13r, freebsd14, freebsd14r, freebsd15, ubuntu20, ubuntu22, ubuntu24]
         # openzfs:
         # os: [almalinux8, almalinux9, centos-stream9, fedora39, fedora40, freebsd13, freebsd13r, freebsd14, freebsd14r, freebsd15, ubuntu20, ubuntu22, ubuntu24]
         # freebsd:
+        os: [almalinux8, almalinux9, fedora39, fedora40, freebsd13, freebsd14, ubuntu20, ubuntu22, ubuntu24]
         # os: [freebsd13, freebsd13r, freebsd14, freebsd14r, freebsd15]
     runs-on: ubuntu-24.04
     steps:
@@ -24,18 +25,18 @@ jobs:
       with:
         ref: ${{ github.event.pull_request.head.sha }}
 
-    - name: Setup SSH
-      run: |
-        mkdir -p $HOME/.ssh
-        echo "ConnectTimeout 1" >> $HOME/.ssh/config
-        echo "StrictHostKeyChecking no" >> $HOME/.ssh/config
-        echo "${{ secrets.AUTHORIZED_KEYS }}" >> $HOME/.ssh/authorized_keys
-        echo "${{ secrets.SSH_KEY }}" > $HOME/.ssh/id_ed25519
-        echo "${{ secrets.KNOWN_HOSTS }}" >> $HOME/.ssh/known_hosts
-        chmod 600 $HOME/.ssh/id_ed25519
-        R=`shuf -n 1 -i 10000-60000`
-        echo "Port  $R"
-        ssh -x -N -C -f -R $R:127.0.0.1:22 mcmilk@${{ secrets.SOME_HOST }}
+#    - name: Setup SSH
+#      run: |
+#        mkdir -p $HOME/.ssh
+#        echo "ConnectTimeout 1" >> $HOME/.ssh/config
+#        echo "StrictHostKeyChecking no" >> $HOME/.ssh/config
+#        echo "${{ secrets.AUTHORIZED_KEYS }}" >> $HOME/.ssh/authorized_keys
+#        echo "${{ secrets.SSH_KEY }}" > $HOME/.ssh/id_ed25519
+#        echo "${{ secrets.KNOWN_HOSTS }}" >> $HOME/.ssh/known_hosts
+#        chmod 600 $HOME/.ssh/id_ed25519
+#        R=`shuf -n 1 -i 10000-60000`
+#        echo "Port  $R"
+#        ssh -x -N -C -f -R $R:127.0.0.1:22 mcmilk@${{ secrets.SOME_HOST }}
 
     - name: Setup QEMU
       timeout-minutes: 10
@@ -87,11 +88,40 @@ jobs:
       run: .github/workflows/scripts/qemu-7-reports.sh
 
     - uses: actions/upload-artifact@v4
+      id: artifact-upload-step
       if: always()
       with:
         name: Logs-functional-${{ matrix.os }}
         path: /tmp/qemu-${{ matrix.os }}.tar
         if-no-files-found: ignore
+
+    - name: Test Summary
+      if: success() || failure()
+      run: |
+        cat /var/tmp/test_results/summary.txt
+        echo ""
+        echo "Full logs for download:"
+        echo '${{ steps.artifact-upload-step.outputs.artifact-url }}'
+        echo "File listing:"
+        ls -l /var/tmp/test_results/
+
+        # Did we have a test failure?
+        if grep -vq 0 /var/tmp/test_results/vm*/exitcode.txt ; then
+            echo "One or more tests failed"
+            cat /var/tmp/test_results/summary-failure-logs.txt
+            # On test failures, the github test results page will autoscroll to the
+            # bottom of summary-with-logs.txt.  The first thing we want to see
+            # is the summary page of failures so print another copy of it at
+            # the bottom of the "page" for easy access.
+            echo ""
+            cat /var/tmp/test_results/summary.txt
+            echo ""
+            echo "Full logs for download:"
+            echo '${{ steps.artifact-upload-step.outputs.artifact-url }}'
+            false
+        else
+            true
+        fi
 
   cleanup:
     if: always()

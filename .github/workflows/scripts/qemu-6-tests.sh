@@ -71,8 +71,14 @@ esac
 cd /var/tmp
 uname -a > uname.txt
 
+# ONLY FOR TESTING DO NOT COMMIT
+#
+TAGS=$2/$3
+
+# TAGS=raidz
+
 # run functional testings
-$TDIR/zfs-tests.sh -vK -s 3G -T $2/$3
+$TDIR/zfs-tests.sh -vK -s 3G -T $TAGS
 RV=$?
 
 # we wont fail here, this will be done later

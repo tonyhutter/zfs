@@ -137,7 +137,7 @@ function test_scrub # <pool> <parity> <dir>
 	typeset nparity=$2
 	typeset dir=$3
 	typeset combrec=$4
-
+	log_note "Begin: $1, $2, $3, $4"
 	reflow_size=$(get_pool_prop allocated $pool)
 	randbyte=$(( ((RANDOM<<15) + RANDOM) % $reflow_size ))
 	log_must set_tunable64 RAIDZ_EXPAND_MAX_REFLOW_BYTES $randbyte
@@ -151,10 +151,18 @@ function test_scrub # <pool> <parity> <dir>
 		dd conv=notrunc if=/dev/zero of=$dir/dev-$i \
 		    bs=1M seek=4 count=$(($dev_size_mb-4))
 	done
+	log_must sync
 
 	log_must zpool import -o cachefile=none -d $dir $pool
-
+	if is_pool_scrubbing $pool ; then
+		wait_scrubbed $pool
+	fi
+	log_note "=== About to scrub1 ==="
+	log_note "$(zpool status -vs)"
 	log_must zpool scrub -w $pool
+	log_note "=== After scrub1 ==="
+	log_note "$(zpool status -vs)"
+
 	log_must zpool clear $pool
 	log_must zpool export $pool
 
@@ -163,10 +171,17 @@ function test_scrub # <pool> <parity> <dir>
 		dd conv=notrunc if=/dev/zero of=$dir/dev-$i \
 		    bs=1M seek=4 count=$(($dev_size_mb-4))
 	done
+	log_must sync
 
 	log_must zpool import -o cachefile=none -d $dir $pool
-
+	if is_pool_scrubbing $pool ; then
+		wait_scrubbed $pool
+	fi
+	log_note "=== About to scrub2 ==="
+	log_note "$(zpool status -vs)"
 	log_must zpool scrub -w $pool
+	log_note "=== After scrub2 ==="
+	log_note "$(zpool status -vs)"
 
 	log_must check_pool_status $pool "errors" "No known data errors"
 

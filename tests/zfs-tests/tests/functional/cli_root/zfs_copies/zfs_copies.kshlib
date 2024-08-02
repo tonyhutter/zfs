@@ -155,5 +155,16 @@ function do_vol_test
 
 	# Ubuntu 20.04 wants a sync here
 	log_must sync
+
+	# Not sure if this 'udevadm settle' is needed, but we once saw this
+	# failure and want to attempt to mitigate it:
+	#
+	#  ERROR: zfs destroy testpool/testvol1 exited 1
+	#  cannot destroy 'testpool/testvol1': dataset is busy
+	#
+	if is_linux; then
+		udevadm settle
+	fi
+
 	log_must zfs destroy $vol
 }

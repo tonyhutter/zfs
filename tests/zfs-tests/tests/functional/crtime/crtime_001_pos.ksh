@@ -63,7 +63,10 @@ for arg in ${args[*]}; do
 	fi
 	log_must touch $TESTFILE
 	typeset -i crtime1=$(stat_crtime $TESTFILE)
-	if (( crtime1 != crtime )); then
+
+	# On slow test machines, there's a slight chance crtime1 rolls over
+	# to the next second.  If that happens count it as ok.
+	if ! within_tolerance $crtime1 $crtime 1 ; then
 		log_fail "touch modified crtime ($crtime1 != $crtime)"
 	fi
 done
