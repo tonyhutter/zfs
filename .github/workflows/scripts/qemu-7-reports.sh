@@ -52,16 +52,26 @@ for i in `seq 1 $VMs`; do
   echo "##[endgroup]"
 done
 
+RESPATH="/var/tmp/test_results"
+
 # all tests without grouping:
 MERGE="$BASE/.github/workflows/scripts/merge_summary.awk"
-$MERGE vm*log.txt | $BASE/scripts/zfs-tests-color.sh
+$MERGE vm*log.txt | $BASE/scripts/zfs-tests-color.sh | tee $RESPATH/summary.txt
 
-RESPATH="/var/tmp/test_results"
 for i in `seq 1 $VMs`; do
   rsync -arL zfs@192.168.122.1$i:$RESPATH/current $RESPATH/vm$i || true
   scp zfs@192.168.122.1$i:"/var/tmp/*.txt" $RESPATH/vm$i || true
 done
 cp -f /var/tmp/*.txt $RESPATH || true
+
+
+# Save a list of all failed test logs for easy access
+awk '/\[FAIL\]|\[KILLED\]/{ show=1; print; next; }; /\[SKIP\]|\[PASS\]/{ show=0; } show' \
+    $RESPATH/vm*/current/log >> $RESPATH/summary-failure-logs.txt
+
+cp $RESPATH/summary.txt $RESPATH/summary-with-logs.txt
+cat $RESPATH/summary-failure-logs.txt >> $RESPATH/summary-with-logs.txt
+
 tar cf /tmp/qemu-$OS.tar -C $RESPATH -h . || true
 
 echo "********************************************************************"
