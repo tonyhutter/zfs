@@ -85,15 +85,44 @@ case "$1" in
     sudo mv -f /tmp/*.txt /var/tmp
     sudo -E modprobe zfs
     TDIR="/usr/share/zfs"
+
+    # Enable swap to mitigate some OOM conditions like:
+    # https://github.com/openzfs/zfs/issues/16566
+    #
+    # Directions for setting up swap on btrfs (Fedora) from:
+    # https://btrfs.readthedocs.io/en/latest/Swapfile.html
+    echo "setting up swap"
+    if ! sudo truncate -s 0 /swapfile &> /dev/null ; then
+        echo "truncate failed"
+    fi
+
+    if !  sudo chattr +C /swapfile &> /dev/null ; then
+        echo "chattr failed"
+    fi
+
+    if !  sudo fallocate -l 16G /swapfile &> /dev/null ; then
+        echo "fallocate failed"
+    fi
+    if ! sudo chmod 0600 /swapfile &> /dev/null ; then
+        echo "chmod failed"
+    fi
+    if !  sudo mkswap /swapfile &> /dev/null ; then
+        echo "mkswap failed"
+    fi
+
+    if !  sudo swapon /swapfile &> /dev/null ; then
+        echo "Swapon failed"
+    fi
     ;;
 esac
 
 # run functional testings and save exitcode
 cd /var/tmp
-TAGS=$2/$3
+# TAGS=$2/$3
 if [ "$4" == "quick" ]; then
   export RUNFILES="sanity.run"
 fi
+TAGS=raidz
 sudo dmesg -c > dmesg-prerun.txt
 mount > mount.txt
 df -h > df-prerun.txt
