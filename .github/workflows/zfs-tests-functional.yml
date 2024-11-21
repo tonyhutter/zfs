@@ -23,6 +23,10 @@ jobs:
         sudo apt-get upgrade
         sudo xargs --arg-file=${{ github.workspace }}/.github/workflows/build-dependencies.txt apt-get install -qq
         sudo apt-get clean
+        echo "RPM2CPIO: $(which rpm2cpio)"
+        echo "CPIO: $(which cpio)"
+        echo "PKG: $(sudo apt list --installed | grep -E 'rpm|cpio')"
+
     - name: Autogen.sh
       run: |
         sh autogen.sh

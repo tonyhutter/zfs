@@ -46,6 +46,7 @@ python3-pip
 python3-setuptools
 python3-sphinx
 rng-tools-debian
+rpm2cpio
 rsync
 samba
 sysstat
