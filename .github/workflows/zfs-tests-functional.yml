@@ -23,9 +23,11 @@ jobs:
         sudo apt-get upgrade
         sudo xargs --arg-file=${{ github.workspace }}/.github/workflows/build-dependencies.txt apt-get install -qq
         sudo apt-get clean
-        echo "RPM2CPIO: $(which rpm2cpio)"
-        echo "CPIO: $(which cpio)"
-        echo "PKG: $(sudo apt list --installed | grep -E 'rpm|cpio')"
+        apt list --installed | grep -E 'cpio|alien|rpm'
+        echo "BASE ------"
+        sudo gzip -c /usr/share/perl5/Alien/Package/Rpm.pm | base64
+        sudo diff -u /usr/share/perl5/Alien/Package/Rpm.pm ${{ github.workspace }}/Rpm.pm || true
+        sudo cp ${{ github.workspace }}/Rpm.pm /usr/share/perl5/Alien/Package/Rpm.pm
 
     - name: Autogen.sh
       run: |
@@ -35,7 +37,12 @@ jobs:
         ./configure --enable-debug --enable-debuginfo
     - name: Make
       run: |
-        make --no-print-directory -s pkg-utils pkg-kmod
+        make --no-print-directory -s pkg-utils pkg-kmod 2>&1 || true
+        echo "OUT1:"
+        cat /tmp/out || true
+        echo "OUT2:"
+        cat /tmp/out2 || true
+ 
     - name: Install
       run: |
         sudo dpkg -i *.deb
