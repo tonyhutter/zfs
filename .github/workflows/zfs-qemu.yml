@@ -3,6 +3,7 @@ name: zfs-qemu
 on:
   push:
   pull_request:
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
@@ -96,33 +97,15 @@ jobs:
         rsync -ar $HOME/work/zfs/zfs zfs@$IP:./
         ssh zfs@$IP '$HOME/zfs/.github/workflows/scripts/qemu-4-build.sh' ${{ matrix.os }}
 
-    - name: Setup testing machines
-      timeout-minutes: 5
-      run: .github/workflows/scripts/qemu-5-setup.sh
-
-    - name: Run tests
-      timeout-minutes: 270
-      run: .github/workflows/scripts/qemu-6-tests.sh
-      env:
-        CI_TYPE: ${{ needs.test-config.outputs.ci_type }}
-
-    - name: Prepare artifacts
-      if: always()
-      timeout-minutes: 10
-      run: .github/workflows/scripts/qemu-7-prepare.sh
-
-    - uses: actions/upload-artifact@v4
-      id: artifact-upload
-      if: always()
-      with:
-        name: Logs-functional-${{ matrix.os }}
-        path: /tmp/qemu-${{ matrix.os }}.tar
-        if-no-files-found: ignore
-
-    - name: Test Summary
-      if: always()
-      run: .github/workflows/scripts/qemu-8-summary.sh '${{ steps.artifact-upload.outputs.artifact-url }}'
-
+    - name: Create repo
+      timeout-minutes: 30
+      run: |
+        echo "event name is:" ${{ github.event_name }} 
+        echo "event type is:" ${{ github.event.action }}
+        if [ ${{ github.event_name }} == "workflow_dispatch" ] ; then 
+          echo "This is a workflow_dispatch"
+          ssh zfs@$IP '$HOME/zfs/.github/workflows/scripts/qemu-repo-build.sh' ${{ matrix.os }}
+        fi
   cleanup:
     if: always()
     name: Cleanup
