@@ -33,6 +33,7 @@ for i in $(seq 1 $VMs); do
   scp zfs@192.168.122.1$i:"/var/tmp/*.txt" $RESPATH/vm$i || true
 done
 cp -f /var/tmp/*.txt $RESPATH || true
+cp -f /var/tmp/*.rpm $RESPATH || true
 cd $RESPATH
 
 # prepare result files for summary
@@ -117,6 +118,10 @@ fi
 
 if [ ! -s uname.txt ]; then
   echo ":interrobang: Panic - where is my uname.txt?" > uname.txt
+fi
+
+if [ "$save_rpms" == "true" ] ; then
+        cp $BASE/*.rpm $RESPATH
 fi
 
 # artifact ready now
