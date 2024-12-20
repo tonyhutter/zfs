@@ -1,10 +1,15 @@
 name: zfs-qemu
 
 on:
-  push:
-  pull_request:
+#  push:
+#  pull_request:
   workflow_dispatch:
     inputs:
+      dkms:
+        type: boolean
+        required: false
+        default: false
+        description: 'Build DKMS RPMs in addition to KMOD RPMs'
       save_rpms:
         type: boolean
         required: false
@@ -29,7 +34,7 @@ jobs:
       - name: Generate OS config and CI type
         id: os
         run: |
-          FULL_OS='["almalinux8", "almalinux9", "centos-stream9", "debian11", "debian12", "fedora40", "fedora41", "freebsd13-3r", "freebsd13-4s", "freebsd14-1r", "freebsd14-2s", "freebsd15-0c", "ubuntu20", "ubuntu22", "ubuntu24"]'
+          FULL_OS='["almalinux8", "almalinux9", "fedora40", "fedora41"]'
           QUICK_OS='["almalinux8", "almalinux9", "debian12", "fedora41", "freebsd13-3r", "freebsd14-2r", "ubuntu24"]'
           # determine CI type when running on PR
           ci_type="full"
@@ -60,7 +65,8 @@ jobs:
         # FreeBSD Release: freebsd13-3r, freebsd13-4r, freebsd14-1r, freebsd14-2r
         # FreeBSD Stable:  freebsd13-4s, freebsd14-2s
         # FreeBSD Current: freebsd15-0c
-        os: ${{ fromJson(needs.test-config.outputs.test_os) }}
+#        os: ${{ fromJson(needs.test-config.outputs.test_os) }}
+        os: ['almalinux9', 'fedora41']
     runs-on: ubuntu-24.04
     steps:
     - uses: actions/checkout@v4
@@ -77,31 +83,20 @@ jobs:
 
     - name: Install dependencies
       timeout-minutes: 20
-      run: |
-        echo "Install dependencies in QEMU machine"
-        IP=192.168.122.10
-        while pidof /usr/bin/qemu-system-x86_64 >/dev/null; do
-          ssh 2>/dev/null zfs@$IP "uname -a" && break
-        done
-        scp .github/workflows/scripts/qemu-3-deps.sh zfs@$IP:qemu-3-deps.sh
-        PID=`pidof /usr/bin/qemu-system-x86_64`
-        ssh zfs@$IP '$HOME/qemu-3-deps.sh' ${{ matrix.os }}
-        # wait for poweroff to succeed
-        tail --pid=$PID -f /dev/null
-        sleep 5 # avoid this: "error: Domain is already active"
-        rm -f $HOME/.ssh/known_hosts
+      run: .github/workflows/scripts/qemu-3-deps.sh ${{ matrix.os }}
 
     - name: Build modules
       timeout-minutes: 30
       run: |
-        echo "Build modules in QEMU machine"
-        sudo virsh start openzfs
-        IP=192.168.122.10
-        while pidof /usr/bin/qemu-system-x86_64 >/dev/null; do
-          ssh 2>/dev/null zfs@$IP "uname -a" && break
-        done
-        rsync -ar $HOME/work/zfs/zfs zfs@$IP:./
-        ssh zfs@$IP '$HOME/zfs/.github/workflows/scripts/qemu-4-build.sh' ${{ matrix.os }}
+        ARGS=""
+        if [ ${{ github.event.inputs.dkms }} == "true" ] ; then
+                ARGS+=" --dkms"
+        fi
+        if [ ${{ github.event.inputs.save_rpms }} == "true" ] ; then
+                ARGS+=" --save"
+        fi
+        echo "Running with args $ARGS"
+        .github/workflows/scripts/qemu-4-build.sh $ARGS ${{ matrix.os }}
 
     - name: Setup testing machines
       timeout-minutes: 5

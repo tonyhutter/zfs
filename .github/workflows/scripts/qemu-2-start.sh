@@ -200,6 +200,15 @@ EOF
 sudo virsh net-update default add ip-dhcp-host \
   "<host mac='52:54:00:83:79:00' ip='192.168.122.10'/>" --live --config
 
+# Make some hostnames for the VMs so we don't have to refer to them with
+# hardcoded IP addresses
+for i in {0..9} ; do
+        vm=$((i + 1))
+        echo "192.168.122.1$i vm$vm" | sudo tee -a /etc/hosts
+done
+echo "ETC HOSTS"
+sudo cat /etc/hosts
+
 sudo virt-install \
   --os-variant $OSv \
   --name "openzfs" \
