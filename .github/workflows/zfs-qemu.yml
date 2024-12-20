@@ -3,6 +3,13 @@ name: zfs-qemu
 on:
   push:
   pull_request:
+  workflow_dispatch:
+    inputs:
+      save_rpms:
+        type: boolean
+        required: false
+        default: false
+        description: 'Build DKMS & KMOD RPMs and save to artifacts'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
