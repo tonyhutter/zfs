@@ -1,0 +1,83 @@
+# This workflow is used to build and test RPM packages.  It is intended to be
+# used to build RPMs for ZFS releases, and then test install them from a
+# repository.
+name: zfs-qemu-packages
+
+on:
+  workflow_dispatch:
+    inputs:
+      dkms:
+        type: boolean
+        required: false
+        default: false
+        description: 'Build DKMS RPMs in addition to KMOD RPMs'
+      save_rpms:
+        type: boolean
+        required: false
+        default: false
+        description: 'Build DKMS & KMOD RPMs and save to artifacts'
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  zfs-qemu-packages-jobs:
+    name: qemu-VMs
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ['almalinux9', 'fedora41']
+    runs-on: ubuntu-24.04
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        ref: ${{ github.event.pull_request.head.sha }}
+
+    - name: Setup QEMU
+      timeout-minutes: 10
+      run: .github/workflows/scripts/qemu-1-setup.sh
+
+    - name: Start build machine
+      timeout-minutes: 10
+      run: .github/workflows/scripts/qemu-2-start.sh ${{ matrix.os }}
+
+    - name: Install dependencies
+      timeout-minutes: 20
+      run: |
+        .github/workflows/scripts/qemu-3-deps.sh ${{ matrix.os }}
+
+    - name: Build modules
+      timeout-minutes: 30
+      run: |
+        ARGS=""
+        if [ ${{ github.event.inputs.dkms }} == "true" ] ; then
+                ARGS+=" --dkms"
+        fi
+        .github/workflows/scripts/qemu-4-build.sh --repo --release $ARGS ${{ matrix.os }}
+
+    - name: Prepare artifacts
+      if: always()
+      timeout-minutes: 10
+      run: rsync -a zfs@vm0:/tmp/repo /tmp
+
+    - uses: actions/upload-artifact@v4
+      id: artifact-upload
+      if: always()
+      with:
+        name: ${{ matrix.os }}-repo
+        path: /tmp/repo/*
+        if-no-files-found: ignore
+
+  cleanup:
+    if: always()
+    needs: [zfs-qemu-packages-jobs]
+    name: Cleanup
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/download-artifact@v4
+      id: artifact-download
+      if: always()
+    - name: Test Summary
+      if: always()
+      run: |
+        ls -R
