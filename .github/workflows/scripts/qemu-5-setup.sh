@@ -110,7 +110,7 @@ rm crontab.txt
 echo "Waiting for vm's to come up...  (${VMs}x CPU=$CPU RAM=$RAM)"
 for i in $(seq 1 $VMs); do
   while true; do
-    ssh 2>/dev/null zfs@192.168.122.1$i "uname -a" && break
+    ssh 2>/dev/null zfs@vm$i "uname -a" && break
   done
 done
 echo "All $VMs VMs are up now."

@@ -13,6 +13,16 @@ source env.txt
 
 mkdir -p $RESPATH
 
+echo "/var/tmp/env.txt"
+cat /var/tmp/env.txt
+
+# Special case, if we're only building RPMs and not testing them, then
+# $SAVE_RPMS will be set, but $VMs will not.  In that case, just set $VMs to
+# the first VM (vm1), since that will be where we built the RPMs.
+if [ -z ${VMs:-} ] && [ -z "${SAVE_RPMS:-}" ] ;  then
+  VMs=1
+fi
+
 # check if building the module has failed
 if [ -z ${VMs:-} ]; then
   cd $RESPATH
@@ -27,12 +37,19 @@ fi
 BASE="$HOME/work/zfs/zfs"
 MERGE="$BASE/.github/workflows/scripts/merge_summary.awk"
 
+echo "HOSTS IS"
+sudo cat /etc/hosts
 # catch result files of testings (vm's should be there)
 for i in $(seq 1 $VMs); do
-  rsync -arL zfs@192.168.122.1$i:$RESPATH/current $RESPATH/vm$i || true
-  scp zfs@192.168.122.1$i:"/var/tmp/*.txt" $RESPATH/vm$i || true
+  rsync -arL zfs@vm$i:$RESPATH/current $RESPATH/vm$i || true
+  scp zfs@vm$i:"/var/tmp/*.txt" $RESPATH/vm$i || true
+  scp zfs@vm$i:"/var/tmp/*.rpm" $RESPATH/vm$i || true
 done
 cp -f /var/tmp/*.txt $RESPATH || true
+
+# If a runner wants to save the RPMs to artifacts, they will include them in
+# /var/tmp.  Copy them to the artifacts if they exist.
+cp -f /var/tmp/*.rpm $RESPATH &>/dev/null || true
 cd $RESPATH
 
 # prepare result files for summary
