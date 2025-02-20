@@ -607,21 +607,14 @@ spa_config_held(spa_t *spa, int locks, krw_t rw)
  * ==========================================================================
  */
 
-/*
- * Lookup the named spa_t in the AVL tree.  The spa_namespace_lock must be held.
- * Returns NULL if no matching spa_t is found.
- */
 spa_t *
-spa_lookup(const char *name)
+spa_lookup_nolock(const char *name)
 {
 	static spa_t search;	/* spa_t is large; don't allocate on stack */
-	spa_t *spa;
 	avl_index_t where;
+	spa_t *spa;
 	char *cp;
 
-	ASSERT(MUTEX_HELD(&spa_namespace_lock));
-
-retry:
 	(void) strlcpy(search.spa_name, name, sizeof (search.spa_name));
 
 	/*
@@ -633,7 +626,24 @@ retry:
 		*cp = '\0';
 
 	spa = avl_find(&spa_namespace_avl, &search, &where);
-	if (spa == NULL)
+
+	return (spa);
+}
+
+/*
+ * Lookup the named spa_t in the AVL tree.  The spa_namespace_lock must be held.
+ * Returns NULL if no matching spa_t is found.
+ */
+spa_t *
+spa_lookup(const char *name)
+{
+	spa_t *spa;
+
+	ASSERT(MUTEX_HELD(&spa_namespace_lock));
+
+retry:
+	spa = spa_lookup_nolock(name);
+	if (!spa)
 		return (NULL);
 
 	/*
