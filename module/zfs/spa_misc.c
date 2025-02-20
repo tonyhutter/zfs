@@ -238,6 +238,7 @@
 
 avl_tree_t spa_namespace_avl;
 kmutex_t spa_namespace_lock;
+krwlock_t spa_namespace_avl_lock;
 kcondvar_t spa_namespace_cv;
 static const int spa_max_replication_override = SPA_DVAS_PER_BP;
 
@@ -607,21 +608,14 @@ spa_config_held(spa_t *spa, int locks, krw_t rw)
  * ==========================================================================
  */
 
-/*
- * Lookup the named spa_t in the AVL tree.  The spa_namespace_lock must be held.
- * Returns NULL if no matching spa_t is found.
- */
 spa_t *
-spa_lookup(const char *name)
+spa_lookup_nolock(const char *name)
 {
 	static spa_t search;	/* spa_t is large; don't allocate on stack */
-	spa_t *spa;
 	avl_index_t where;
+	spa_t *spa;
 	char *cp;
 
-	ASSERT(MUTEX_HELD(&spa_namespace_lock));
-
-retry:
 	(void) strlcpy(search.spa_name, name, sizeof (search.spa_name));
 
 	/*
@@ -632,8 +626,27 @@ retry:
 	if (cp != NULL)
 		*cp = '\0';
 
+	rw_enter(&spa_namespace_avl_lock, RW_READER);
 	spa = avl_find(&spa_namespace_avl, &search, &where);
-	if (spa == NULL)
+	rw_exit(&spa_namespace_avl_lock);
+
+	return (spa);
+}
+
+/*
+ * Lookup the named spa_t in the AVL tree.  The spa_namespace_lock must be held.
+ * Returns NULL if no matching spa_t is found.
+ */
+spa_t *
+spa_lookup(const char *name)
+{
+	spa_t *spa;
+
+	ASSERT(MUTEX_HELD(&spa_namespace_lock));
+
+retry:
+	spa = spa_lookup_nolock(name);
+	if (!spa)
 		return (NULL);
 
 	/*
@@ -746,7 +759,9 @@ spa_add(const char *name, nvlist_t *config, const char *altroot)
 	spa_stats_init(spa);
 
 	ASSERT(MUTEX_HELD(&spa_namespace_lock));
+	rw_enter(&spa_namespace_avl_lock, RW_WRITER);
 	avl_add(&spa_namespace_avl, spa);
+	rw_exit(&spa_namespace_avl_lock);
 
 	/*
 	 * Set the alternate root, if there is one.
@@ -849,8 +864,9 @@ spa_remove(spa_t *spa)
 	ASSERT0(spa->spa_waiters);
 
 	nvlist_free(spa->spa_config_splitting);
-
+       rw_enter(&spa_namespace_avl_lock, RW_WRITER);
 	avl_remove(&spa_namespace_avl, spa);
+	rw_exit(&spa_namespace_avl_lock);
 
 	if (spa->spa_root)
 		spa_strfree(spa->spa_root);
@@ -1513,6 +1529,7 @@ spa_by_guid(uint64_t pool_guid, uint64_t device_guid)
 
 	ASSERT(MUTEX_HELD(&spa_namespace_lock));
 
+	rw_enter(&spa_namespace_avl_lock, RW_READER);
 	for (spa = avl_first(t); spa != NULL; spa = AVL_NEXT(t, spa)) {
 		if (spa->spa_state == POOL_STATE_UNINITIALIZED)
 			continue;
@@ -1536,6 +1553,7 @@ spa_by_guid(uint64_t pool_guid, uint64_t device_guid)
 			}
 		}
 	}
+	rw_exit(&spa_namespace_avl_lock);
 
 	return (spa);
 }
@@ -1594,11 +1612,15 @@ spa_load_guid_exists(uint64_t guid)
 	avl_tree_t *t = &spa_namespace_avl;
 
 	ASSERT(MUTEX_HELD(&spa_namespace_lock));
+	rw_enter(&spa_namespace_avl_lock, RW_READER);
 
 	for (spa_t *spa = avl_first(t); spa != NULL; spa = AVL_NEXT(t, spa)) {
-		if (spa_load_guid(spa) == guid)
+		if (spa_load_guid(spa) == guid) {
+			rw_exit(&spa_namespace_avl_lock);
 			return (B_TRUE);
+		}
 	}
+	rw_exit(&spa_namespace_avl_lock);
 
 	return (arc_async_flush_guid_inuse(guid));
 }
@@ -2560,6 +2582,7 @@ spa_init(spa_mode_t mode)
 	mutex_init(&spa_namespace_lock, NULL, MUTEX_DEFAULT, NULL);
 	mutex_init(&spa_spare_lock, NULL, MUTEX_DEFAULT, NULL);
 	mutex_init(&spa_l2cache_lock, NULL, MUTEX_DEFAULT, NULL);
+	rw_init(&spa_namespace_avl_lock, NULL, RW_DEFAULT, NULL);
 	cv_init(&spa_namespace_cv, NULL, CV_DEFAULT, NULL);
 
 	avl_create(&spa_namespace_avl, spa_name_compare, sizeof (spa_t),

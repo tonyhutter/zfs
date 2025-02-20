@@ -842,6 +842,7 @@ void spa_select_allocator(zio_t *zio);
 
 /* spa namespace global mutex */
 extern kmutex_t spa_namespace_lock;
+extern krwlock_t spa_namespace_avl_lock;
 extern avl_tree_t spa_namespace_avl;
 extern kcondvar_t spa_namespace_cv;
 
@@ -869,6 +870,7 @@ extern int spa_config_parse(spa_t *spa, vdev_t **vdp, nvlist_t *nv,
 
 /* Namespace manipulation */
 extern spa_t *spa_lookup(const char *name);
+extern spa_t *spa_lookup_nolock(const char *name);
 extern spa_t *spa_add(const char *name, nvlist_t *config, const char *altroot);
 extern void spa_remove(spa_t *spa);
 extern spa_t *spa_next(spa_t *prev);

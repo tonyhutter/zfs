@@ -68,6 +68,12 @@ static uint64_t spa_config_generation = 1;
  * userland pools when doing testing.
  */
 char *spa_config_path = (char *)ZPOOL_CACHE;
+/*
+ * Skip locks on a pool if it has this name, or '*' for all pools.
+ * Can cause kernel panics - for debug use only.
+ * */
+char *zfs_debug_skip_locks_on_pool = NULL;
+
 #ifdef _KERNEL
 static int zfs_autoimport_disable = B_TRUE;
 #endif
@@ -420,15 +426,28 @@ spa_config_generate(spa_t *spa, vdev_t *vd, uint64_t txg, int getstats)
 	boolean_t locked = B_FALSE;
 	uint64_t split_guid;
 	const char *pool_name;
+	boolean_t skip_locks = B_FALSE;
+
+	/* Special debug case: we've selected a pool for lockless operation */
+	if (zfs_debug_skip_locks_on_pool != NULL) {
+		if ((strcmp(spa_name(spa), zfs_debug_skip_locks_on_pool) == 0) ||
+		    (strcmp("*", zfs_debug_skip_locks_on_pool) == 0))
+			skip_locks = B_TRUE;
+
+	}
 
 	if (vd == NULL) {
 		vd = rvd;
 		locked = B_TRUE;
-		spa_config_enter(spa, SCL_CONFIG | SCL_STATE, FTAG, RW_READER);
+
+		if (!skip_locks)
+			spa_config_enter(spa, SCL_CONFIG | SCL_STATE, FTAG, RW_READER);
 	}
 
-	ASSERT(spa_config_held(spa, SCL_CONFIG | SCL_STATE, RW_READER) ==
-	    (SCL_CONFIG | SCL_STATE));
+	if (!skip_locks)
+		ASSERT(spa_config_held(spa, SCL_CONFIG | SCL_STATE, RW_READER) ==
+		    (SCL_CONFIG | SCL_STATE));
+
 
 	/*
 	 * If txg is -1, report the current value of spa->spa_config_txg.
@@ -551,7 +570,7 @@ spa_config_generate(spa_t *spa, vdev_t *vd, uint64_t txg, int getstats)
 		kmem_free(dds, sizeof (ddt_stat_t));
 	}
 
-	if (locked)
+	if (locked && !skip_locks)
 		spa_config_exit(spa, SCL_CONFIG | SCL_STATE, FTAG);
 
 	return (config);
@@ -636,3 +655,6 @@ ZFS_MODULE_PARAM(zfs_spa, spa_, config_path, STRING, ZMOD_RD,
 
 ZFS_MODULE_PARAM(zfs, zfs_, autoimport_disable, INT, ZMOD_RW,
 	"Disable pool import at module load");
+
+ZFS_MODULE_PARAM(zfs, zfs_, debug_skip_locks_on_pool, STRING, ZMOD_RW,
+	"DEBUG: disable locks on pools with this name");

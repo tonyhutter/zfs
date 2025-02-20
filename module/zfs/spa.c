@@ -5804,6 +5804,17 @@ spa_open_common(const char *pool, spa_t **spapp, const void *tag,
 
 	*spapp = NULL;
 
+	/* Special debug case: we've selected a pool for lockless operation */
+	if (zfs_debug_skip_locks_on_pool != NULL) {
+		/* Danger: we're doing spa_lookup() without holding the lock */
+		if ((spa = spa_lookup_nolock(pool)) == NULL) {
+			return (SET_ERROR(ENOENT));
+		}
+		if ((strcmp(spa_name(spa), zfs_debug_skip_locks_on_pool) == 0) ||
+		    (strcmp("*", zfs_debug_skip_locks_on_pool) == 0))
+			goto skip_the_locks;
+	}
+
 	/*
 	 * As disgusting as this is, we need to support recursive calls to this
 	 * function because dsl_dir_open() is called during spa_load(), and ends
@@ -5820,6 +5831,14 @@ spa_open_common(const char *pool, spa_t **spapp, const void *tag,
 			mutex_exit(&spa_namespace_lock);
 		return (SET_ERROR(ENOENT));
 	}
+
+#if _KERNEL
+	/*
+	 * Simulate holding the spa_namespace lock for a long time.
+	 * The lockless version will not delay here.
+	 */
+	msleep(500);
+#endif
 
 	if (spa->spa_state == POOL_STATE_UNINITIALIZED) {
 		zpool_load_policy_t policy;
@@ -5880,6 +5899,7 @@ spa_open_common(const char *pool, spa_t **spapp, const void *tag,
 		}
 	}
 
+skip_the_locks:
 	spa_open_ref(spa, tag);
 
 	if (config != NULL)
