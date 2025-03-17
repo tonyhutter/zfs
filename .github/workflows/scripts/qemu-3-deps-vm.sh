@@ -4,6 +4,11 @@
 # 3) install dependencies for compiling and loading
 #
 # $1: OS name (like 'fedora41')
+# $2: (optional) URL to install Ubuntu kernel nightly debian packages
+#     from.  This is useful for testing out ZFS against new kernels.
+#     URL should point to one of Ubuntu's nightly kernel packages
+#     pages, like: https://kernel.ubuntu.com/mainline/v6.14-rc7/
+#
 ######################################################################
 
 set -eu
@@ -94,6 +99,27 @@ function tumbleweed() {
   echo "##[endgroup]"
 }
 
+# $1: Ubuntu nightly kernel deb page to scrape and install from, like:
+#     https://kernel.ubuntu.com/mainline/v6.14-rc7/
+function install_ubuntu_nightly_kernel {
+  baseurl=$1
+  wget $baseurl -O index.html
+  html=$(cat index.html)
+  list=$(echo "$html"  | grep amd64 | grep generic | cut -d '"' -f 2 | \
+    grep -v top)
+  singleheader=$(echo "$html" | grep linux | egrep 'linux-headers' | \
+    cut -d '"' -f 2 | grep -v top  | egrep -v '\-[a-gi-z]' | head -n 1)
+
+  # Get the 4 or so kernel packages
+  for i in $list $singleheader ; do
+    wget $baseurl/$i
+   done
+
+  sudo apt -y install *.deb
+
+  rm -f linux-*.deb
+}
+
 # Install dependencies
 case "$1" in
   almalinux8)
@@ -148,6 +174,10 @@ case "$1" in
     echo "##[group]Delete Ubuntu OpenZFS modules"
     for i in $(find /lib/modules -name zfs -type d); do sudo rm -rvf $i; done
     echo "##[endgroup]"
+
+    if [ ! -z "$2" ] ; then
+      install_ubuntu_nightly_kernel "$2"
+    fi
     ;;
 esac
 

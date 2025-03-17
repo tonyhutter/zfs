@@ -15,6 +15,11 @@ on:
         required: false
         default: false
         description: 'Test on CentOS 10 stream'
+      ubuntu_kernel_debs_url:
+        type: string
+        required: false
+        default: ""
+        description: "(optional) Install from Ubuntu nightly kernel debs URL (like: https://kernel.ubuntu.com/mainline/v6.14-rc7)"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
@@ -92,7 +97,7 @@ jobs:
 
     - name: Install dependencies
       timeout-minutes: 20
-      run: .github/workflows/scripts/qemu-3-deps.sh ${{ matrix.os }}
+      run: .github/workflows/scripts/qemu-3-deps.sh ${{ matrix.os }} ${{ github.event.inputs.ubuntu_kernel_debs_url }}
 
     - name: Build modules
       timeout-minutes: 30
