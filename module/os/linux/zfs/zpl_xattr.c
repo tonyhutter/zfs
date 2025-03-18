@@ -86,7 +86,7 @@
 #include <sys/zpl.h>
 #include <linux/vfs_compat.h>
 
-#define	NFS41ACL_XATTR		"system.nfs4_acl_xdr"
+#define	NFS41ACL_XATTR		"system.nfs4_acl"
 
 static const struct {
 	int kmask;
@@ -1607,25 +1607,36 @@ __zpl_xattr_nfs41acl_list(struct inode *ip, char *list, size_t list_size,
 }
 ZPL_XATTR_LIST_WRAPPER(zpl_xattr_nfs41acl_list);
 
-static int
-acep_to_nfsace4i(const ace_t *acep, u32 *xattrbuf)
+#define XDR(a) do { \
+			if (!is_size_only) \
+				*xattrbuf = a; \
+			xattrbuf++; \
+		} while (0)
+static u32 *
+acep_to_nfsace4i(const ace_t *acep, u32 *xattrbuf, boolean_t is_size_only)
 {
 	u32 who = 0, iflag = 0;
+	char *str;
+	size_t wholen;
+	char *ptr;
 
 	switch (acep->a_flags & ACE_TYPE_FLAGS) {
 	case ACE_OWNER:
 		iflag = ACEI4_SPECIAL_WHO;
 		who = ACE4_SPECIAL_OWNER;
+		str = "OWNER@";
 		break;
 
 	case ACE_GROUP|ACE_IDENTIFIER_GROUP:
 		iflag = ACEI4_SPECIAL_WHO;
 		who = ACE4_SPECIAL_GROUP;
+		str = "GROUP@";
 		break;
 
 	case ACE_EVERYONE:
 		iflag = ACEI4_SPECIAL_WHO;
 		who = ACE4_SPECIAL_EVERYONE;
+		str = "EVERYONE@";
 		break;
 
 	case ACE_IDENTIFIER_GROUP:
@@ -1636,36 +1647,65 @@ acep_to_nfsace4i(const ace_t *acep, u32 *xattrbuf)
 	default:
 		dprintf("Unknown ACE_TYPE_FLAG 0x%08x\n",
 		    acep->a_flags & ACE_TYPE_FLAGS);
-		return (-EINVAL);
+		return (NULL);
 	}
 
-	*xattrbuf++ = htonl(acep->a_type);
-	*xattrbuf++ = htonl(acep->a_flags & NFS41_FLAGS);
-	*xattrbuf++ = htonl(iflag);
-	*xattrbuf++ = htonl(acep->a_access_mask);
-	*xattrbuf++ = htonl(who);
+	XDR(htonl(acep->a_type));
+	XDR(htonl(acep->a_flags & NFS41_FLAGS));
+	XDR(htonl(acep->a_access_mask));
+//	XDR(htonl(iflag));
 
-	return (0);
+	wholen = strlen(str);
+	XDR(htonl(strlen(str)));
+
+	ptr = (char *) xattrbuf;
+	if (!is_size_only)
+		strncpy(ptr, str, wholen);
+
+	ptr += wholen + (wholen % sizeof(u32));
+	xattrbuf = (u32 *) ptr;
+
+	return (xattrbuf);
 }
 
 static int
-zfsacl_to_nfsacl41i(const vsecattr_t vsecp, u32 *xattrbuf)
+zfsacl_to_nfsacl41i(const vsecattr_t vsecp, u32 *xattrbuf, size_t *totalsize)
 {
-	int i, error = 0;
+	int i;
 	ace_t *acep = NULL;
+	boolean_t is_size_only = B_FALSE;
+	u32 *old_xattrbuf = xattrbuf;
+	size_t leftovers;
 
-	*xattrbuf++ = htonl(vsecp.vsa_aclflags);
-	*xattrbuf++ = htonl(vsecp.vsa_aclcnt);
+	if (xattrbuf == NULL)
+		is_size_only = B_TRUE;
 
-	for (i = 0; i < vsecp.vsa_aclcnt; i++, xattrbuf += ACE4ELEM) {
+	*totalsize = 0;
+//	XDR(htonl(vsecp.vsa_aclflags);
+	XDR(htonl(vsecp.vsa_aclcnt));
+
+	for (i = 0; i < vsecp.vsa_aclcnt; i++) {
 		acep = vsecp.vsa_aclentp + (i * sizeof (ace_t));
-
-		error = acep_to_nfsace4i(acep, xattrbuf);
-		if (error)
+		xattrbuf = acep_to_nfsace4i(acep, xattrbuf, is_size_only);
+		if (xattrbuf == NULL)
 			break;
 	}
 
-	return (error);
+	if (xattrbuf == NULL)
+		return (-1);
+
+	*totalsize = (size_t) (((char *) xattrbuf) - ((char *)old_xattrbuf));
+
+	/* Round buffer to nearest u32 offset and zero leftovers */
+	leftovers = *totalsize % sizeof(u32);
+	if (leftovers > 0) {
+		if (!is_size_only)
+			memset((char *) xattrbuf, 0, leftovers);
+
+		*totalsize += leftovers;
+	}
+
+	return (0);
 }
 
 static int
@@ -1749,23 +1789,8 @@ __zpl_xattr_nfs41acl_get(struct inode *ip, const char *name,
 	int ret, fl;
 	size_t xdr_size;
 
-	if (ITOZSB(ip)->z_acl_type != ZFS_ACLTYPE_NFSV4)
+	if (ITOZSB(ip)->z_acl_type != ZFS_ACLTYPE_NFSV4) {
 		return (-EOPNOTSUPP);
-
-	if (size == 0) {
-		/*
-		 * API user may send 0 size so that we
-		 * return size of buffer needed for ACL.
-		 */
-		crhold(cr);
-		vsecp.vsa_mask = VSA_ACECNT;
-		ret = -zfs_getsecattr(ITOZ(ip), &vsecp, ATTR_NOACLCHECK, cr);
-		if (ret) {
-			return (ret);
-		}
-		crfree(cr);
-		ret = ACES_TO_XDRSIZE(vsecp.vsa_aclcnt);
-		return (ret);
 	}
 
 	vsecp.vsa_mask = VSA_ACE_ALLTYPES | VSA_ACECNT | VSA_ACE |
@@ -1784,13 +1809,18 @@ __zpl_xattr_nfs41acl_get(struct inode *ip, const char *name,
 		goto nfs4acl_get_out;
 	}
 
-	xdr_size = ACES_TO_XDRSIZE(vsecp.vsa_aclcnt);
+	/* User just wants to lookup what the size of the buffer will be */
+	if (size == 0) {
+		zfsacl_to_nfsacl41i(vsecp, NULL, &xdr_size);
+		return (xdr_size);
+	}
+
 	if (xdr_size > size) {
 		ret = -ERANGE;
 		goto nfs4acl_get_out;
 	}
 
-	ret = zfsacl_to_nfsacl41i(vsecp, (u32 *)buffer);
+	ret = zfsacl_to_nfsacl41i(vsecp, (u32 *)buffer, &xdr_size);
 	if (ret == 0)
 		ret = xdr_size;
 
