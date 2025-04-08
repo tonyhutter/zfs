@@ -1058,8 +1058,6 @@ const struct address_space_operations zpl_address_space_operations = {
 #endif
 #ifdef HAVE_VFS_MIGRATE_FOLIO
 	.migrate_folio	= migrate_folio,
-#else
-	.migratepage	= migrate_page,
 #endif
 };
 
