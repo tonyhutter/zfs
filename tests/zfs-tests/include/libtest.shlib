@@ -3098,6 +3098,27 @@ function zed_rc_restore
 	mv $1 $ZEDLET_DIR/zed.rc
 }
 
+# Add specific zedlets to our our test zed.d directory
+# Zedlets can either be from our ZEDLET_LIBEXEC_DIR or the full path to a
+# custom zedlet.
+function zed_setup_zedlets
+{
+	saved_umask=$(umask)
+	log_must umask 0022
+	for i in $@ ; do
+		log_note "looking at zedlet $i"
+		if [[ -f "$i" ]] ; then
+			log_note "itsa file $i"
+
+			log_must cp "$i" $ZEDLET_DIR
+		else
+			# zedlet is in normal zedlet dir
+			log_must cp ${ZEDLET_LIBEXEC_DIR}/$i $ZEDLET_DIR
+		fi
+	done
+	log_must umask $saved_umask
+}
+
 #
 # Setup custom environment for the ZED.
 #
@@ -3129,20 +3150,23 @@ function zed_setup
 	log_must cp ${ZEDLET_ETC_DIR}/zed.rc $ZEDLET_DIR
 	log_must cp ${ZEDLET_ETC_DIR}/zed-functions.sh $ZEDLET_DIR
 
-	# Scripts must only be user writable.
 	if [[ -n "$EXTRA_ZEDLETS" ]] ; then
-		saved_umask=$(umask)
-		log_must umask 0022
-		for i in $EXTRA_ZEDLETS ; do
-			log_must cp ${ZEDLET_LIBEXEC_DIR}/$i $ZEDLET_DIR
-		done
-		log_must umask $saved_umask
+		zed_setup_zedlets $EXTRA_ZEDLETS
 	fi
 
 	# Customize the zed.rc file to enable the full debug log.
 	log_must sed -i '/\#ZED_DEBUG_LOG=.*/d' $ZEDLET_DIR/zed.rc
 	echo "ZED_DEBUG_LOG=$ZED_DEBUG_LOG" >>$ZEDLET_DIR/zed.rc
 
+}
+
+# Remove specific zedlets from our test zed.d directory
+# $@ list of zedlets to remove
+function zed_cleanup_zedlets
+{
+	for i in $@ ; do
+		log_must rm $ZEDLET_DIR/$i
+	done
 }
 
 #
