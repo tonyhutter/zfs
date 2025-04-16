@@ -61,6 +61,7 @@
 !RELEASES.md
 !TEST
 !zfs.release.in
+!FUNDING.yml
 
 #
 # Normal rules
