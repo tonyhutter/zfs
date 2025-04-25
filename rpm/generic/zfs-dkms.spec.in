@@ -31,18 +31,20 @@ Requires:       gcc, make, perl, diffutils
 Requires(post): gcc, make, perl, diffutils
 %if 0%{?rhel}%{?fedora}%{?mageia}%{?suse_version}%{?openEuler}
 # Hold back kernel upgrades if kernel is not supported by ZFS
-Requires:       kernel-devel >= @ZFS_META_KVER_MIN@, kernel-devel <= @ZFS_META_KVER_MAX@.999
-Requires(post): kernel-devel >= @ZFS_META_KVER_MIN@, kernel-devel <= @ZFS_META_KVER_MAX@.999
-Conflicts:      kernel-devel < @ZFS_META_KVER_MIN@, kernel-devel > @ZFS_META_KVER_MAX@.999
-Requires:       kernel-modules-core >= @ZFS_META_KVER_MIN@, kernel-modules-core <= @ZFS_META_KVER_MAX@.999
-Requires(post): kernel-modules-core >= @ZFS_META_KVER_MIN@, kernel-modules-core <= @ZFS_META_KVER_MAX@.999
-Conflicts:      kernel-modules-core < @ZFS_META_KVER_MIN@, kernel-modules-core > @ZFS_META_KVER_MAX@.999
-Requires:       kernel-core >= @ZFS_META_KVER_MIN@, kernel-core <= @ZFS_META_KVER_MAX@.999
-Requires(post): kernel-core >= @ZFS_META_KVER_MIN@, kernel-core <= @ZFS_META_KVER_MAX@.999
-Conflicts:      kernel-core < @ZFS_META_KVER_MIN@, kernel-core > @ZFS_META_KVER_MAX@.999
-Requires:       kernel >= @ZFS_META_KVER_MIN@, kernel <= @ZFS_META_KVER_MAX@.999
-Requires(post): kernel >= @ZFS_META_KVER_MIN@, kernel <= @ZFS_META_KVER_MAX@.999
+Requires:       kernel-devel-matched >= @ZFS_META_KVER_MIN@, kernel-devel-matched <= @ZFS_META_KVER_MAX@.999
+Requires(post): kernel-devel-matched >= @ZFS_META_KVER_MIN@, kernel-devel-matched <= @ZFS_META_KVER_MAX@.999
+Conflicts:      kernel-devel-matched < @ZFS_META_KVER_MIN@, kernel-devel-matched > @ZFS_META_KVER_MAX@.999
 Conflicts:      kernel < @ZFS_META_KVER_MIN@, kernel > @ZFS_META_KVER_MAX@.999
+Conflicts:      kernel-modules-core < @ZFS_META_KVER_MIN@, kernel-modules-core > @ZFS_META_KVER_MAX@.999
+Conflicts:      kernel-modules < @ZFS_META_KVER_MIN@, kernel-modules > @ZFS_META_KVER_MAX@.999
+Conflicts:      kernel-modules-extra < @ZFS_META_KVER_MIN@, kernel-modules-extra > @ZFS_META_KVER_MAX@.999
+Conflicts:      kernel-modules-internal < @ZFS_META_KVER_MIN@, kernel-modules-internal > @ZFS_META_KVER_MAX@.999
+Conflicts:      kernel-uki-virt-addons < @ZFS_META_KVER_MIN@, kernel-uki-virt-addons > @ZFS_META_KVER_MAX@.999
+Conflicts:      kernel-tools-libs-devel < @ZFS_META_KVER_MIN@, kernel-tools-libs-devel > @ZFS_META_KVER_MAX@.999
+Conflicts:      kernel-selftests-internal < @ZFS_META_KVER_MIN@, kernel-selftests-internal > @ZFS_META_KVER_MAX@.999
+Conflicts:      kernel-headers < @ZFS_META_KVER_MIN@, kernel-headers > @ZFS_META_KVER_MAX@.999
+Conflicts:      kernel-cross-headers < @ZFS_META_KVER_MIN@, kernel-cross-headers > @ZFS_META_KVER_MAX@.999
+Conflicts:      kernel-doc < @ZFS_META_KVER_MIN@, kernel-doc > @ZFS_META_KVER_MAX@.999
 Obsoletes:      spl-dkms <= %{version}
 %endif
 Provides:       %{module}-kmod = %{version}
