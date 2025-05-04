@@ -648,6 +648,12 @@ int param_get_raidz_impl(char *buf, zfs_kernel_param_t *kp);
 #endif
 int param_set_raidz_impl(ZFS_MODULE_PARAM_ARGS);
 
+extern boolean_t vdev_is_leaf(vdev_t *vd);
+extern boolean_t vdev_is_special(vdev_t *vd);
+extern boolean_t vdev_is_dedup(vdev_t *vd);
+extern boolean_t vdev_is_alloc_class(vdev_t *vd);
+extern boolean_t vdev_is_special_failsafe(vdev_t *vd);
+
 /*
  * Vdev ashift optimization tunables
  */
