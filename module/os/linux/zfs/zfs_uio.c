@@ -233,9 +233,6 @@ zfs_uiomove_iter(void *p, size_t n, zfs_uio_rw_t rw, zfs_uio_t *uio,
 {
 	size_t cnt = MIN(n, uio->uio_resid);
 
-	if (uio->uio_skip)
-		iov_iter_advance(uio->uio_iter, uio->uio_skip);
-
 	if (rw == UIO_READ)
 		cnt = copy_to_iter(p, cnt, uio->uio_iter);
 	else
@@ -507,11 +504,12 @@ static int
 zfs_uio_pin_user_pages(zfs_uio_t *uio, zfs_uio_rw_t rw)
 {
 	long res;
-	size_t skip = uio->uio_skip;
-	size_t len = uio->uio_resid - skip;
+	size_t len = uio->uio_resid;
 	unsigned int gup_flags = 0;
 	unsigned long addr;
 	unsigned long nr_pages;
+
+	ASSERT3U(uio->uio_segflg, ==, UIO_ITER);
 
 	/*
 	 * Kernel 6.2 introduced the FOLL_PCI_P2PDMA flag. This flag could
@@ -528,7 +526,7 @@ zfs_uio_pin_user_pages(zfs_uio_t *uio, zfs_uio_rw_t rw)
 #if defined(HAVE_ITER_IS_UBUF)
 	if (iter_is_ubuf(uio->uio_iter)) {
 		nr_pages = DIV_ROUND_UP(len, PAGE_SIZE);
-		addr = (unsigned long)uio->uio_iter->ubuf + skip;
+		addr = (unsigned long)uio->uio_iter->ubuf;
 		res = pin_user_pages_unlocked(addr, nr_pages,
 		    &uio->uio_dio.pages[uio->uio_dio.npages], gup_flags);
 		if (res < 0) {
@@ -543,14 +541,13 @@ zfs_uio_pin_user_pages(zfs_uio_t *uio, zfs_uio_rw_t rw)
 #endif
 	const struct iovec *iovp = zfs_uio_iter_iov(uio->uio_iter);
 	for (int i = 0; i < uio->uio_iovcnt; i++) {
-		size_t amt = iovp->iov_len - skip;
+		size_t amt = iovp->iov_len;
 		if (amt == 0) {
 			iovp++;
-			skip = 0;
 			continue;
 		}
 
-		addr = (unsigned long)iovp->iov_base + skip;
+		addr = (unsigned long)iovp->iov_base;
 		nr_pages = DIV_ROUND_UP(amt, PAGE_SIZE);
 		res = pin_user_pages_unlocked(addr, nr_pages,
 		    &uio->uio_dio.pages[uio->uio_dio.npages], gup_flags);
@@ -563,7 +560,6 @@ zfs_uio_pin_user_pages(zfs_uio_t *uio, zfs_uio_rw_t rw)
 
 		len -= amt;
 		uio->uio_dio.npages += res;
-		skip = 0;
 		iovp++;
 	};
 
@@ -577,7 +573,7 @@ static int
 zfs_uio_get_dio_pages_iov_iter(zfs_uio_t *uio, zfs_uio_rw_t rw)
 {
 	size_t start;
-	size_t wanted = uio->uio_resid - uio->uio_skip;
+	size_t wanted = uio->uio_resid;
 	ssize_t rollback = 0;
 	ssize_t cnt;
 	unsigned maxpages = DIV_ROUND_UP(wanted, PAGE_SIZE);
@@ -611,7 +607,7 @@ zfs_uio_get_dio_pages_iov_iter(zfs_uio_t *uio, zfs_uio_rw_t rw)
 #endif
 
 	}
-	ASSERT3U(rollback, ==, uio->uio_resid - uio->uio_skip);
+	ASSERT3U(rollback, ==, uio->uio_resid);
 	iov_iter_revert(uio->uio_iter, rollback);
 
 	return (0);
