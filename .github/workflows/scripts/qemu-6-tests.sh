@@ -96,6 +96,7 @@ esac
 # run functional testings and save exitcode
 cd /var/tmp
 TAGS=$2/$3
+TAGS=mount
 if [ "$4" == "quick" ]; then
   export RUNFILES="sanity.run"
 fi
