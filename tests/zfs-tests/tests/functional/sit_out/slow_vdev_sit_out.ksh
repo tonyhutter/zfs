@@ -40,7 +40,7 @@ function cleanup
 	restore_tunable READ_SIT_OUT_SECS
 	log_must zinject -c all
 	destroy_pool $TESTPOOL2
-	log_must rm -f $TEST_BASE_DIR/vdev.$$.*
+	log_must rm -f $TEST_BASE_DIR/file-vdev.$$.*
 }
 
 log_assert "Verify sit_out works"
@@ -51,15 +51,15 @@ log_onexit cleanup
 save_tunable READ_SIT_OUT_SECS
 set_tunable32 READ_SIT_OUT_SECS 5
 
-log_must truncate -s 150M $TEST_BASE_DIR/vdev.$$.{0..9}
+log_must truncate -s 150M $TEST_BASE_DIR/file-vdev.$$.{0..9}
 
 for raidtype in raidz raidz2 raidz3 draid1 draid2 draid3 ; do
-	log_must zpool create $TESTPOOL2 $raidtype $TEST_BASE_DIR/vdev.$$.{0..9}
+	log_must zpool create $TESTPOOL2 $raidtype $TEST_BASE_DIR/file-vdev.$$.{0..9}
 	log_must dd if=/dev/urandom of=/$TESTPOOL2/bigfile bs=1M count=100
 	log_must zpool export $TESTPOOL2
 	log_must zpool import -d $TEST_BASE_DIR $TESTPOOL2
 
-	BAD_VDEV=$TEST_BASE_DIR/vdev.$$.9
+	BAD_VDEV=$TEST_BASE_DIR/file-vdev.$$.9
 
 	# Initial state should not be sitting out
 	log_must eval [[ "$(get_vdev_prop sit_out $TESTPOOL2 $BAD_VDEV)" == "off" ]]
