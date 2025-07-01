@@ -9837,6 +9837,12 @@ main(int argc, char **argv)
 	}
 
 	dmu_objset_register_type(DMU_OST_ZFS, dummy_get_file_info);
+
+	/*
+	 * Note: kernel_init()->spa_init()->zfs_btree_init() and
+	 * kernel_fini()->spa_fini()->zfs_btree_fini() will take care of
+	 * btree initialization and teardown for us.
+	 */
 	kernel_init(SPA_MODE_READ);
 	kernel_init_done = B_TRUE;
 
