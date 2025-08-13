@@ -32,6 +32,11 @@ on:
         options:
         - "Build RPMs"
         - "Test repo"
+      patch_level:
+        type: string
+        required: false
+        default: "1"
+        description: "(optional) patch level number"
       repo_url:
         type: string
         required: false
@@ -78,7 +83,8 @@ jobs:
                 mkdir -p /tmp/repo
                 ssh zfs@vm0 '$HOME/zfs/.github/workflows/scripts/qemu-test-repo-vm.sh' ${{ github.event.inputs.repo_url }}
         else
-                .github/workflows/scripts/qemu-4-build.sh --repo --release --dkms --tarball ${{ matrix.os }}
+                .github/workflows/scripts/qemu-4-build.sh --patch-level ${{ github.event.inputs.patch_level }} \
+                        --repo --release --dkms --tarball ${{ matrix.os }}
         fi
 
     - name: Prepare artifacts
