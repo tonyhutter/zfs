@@ -68,6 +68,7 @@ case $OS in
 almalinux*)
 	url='https://raw.githubusercontent.com/openzfs/openzfs-docs/refs/heads/master/docs/Getting%20Started/RHEL-based%20distro/index.rst'
 	name=$(curl -Ls $url | grep 'dnf install' | grep -Eo 'zfs-release-[0-9]+-[0-9]+')
+	name="zfs-release-2-8"
 	sudo dnf -y install https://zfsonlinux.org/epel/$name$(rpm --eval "%{dist}").noarch.rpm 2>&1
 	sudo rpm -qi zfs-release
 	test_install zfs $ALTHOST
