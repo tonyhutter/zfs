@@ -94,19 +94,28 @@ function run() {
 function copy_rpms_to_repo {
   # Pick a RPM to query. It doesn't matter which one - we just want to extract
   # the 'Build Host' value from it.
+  echo "Looking up RPM to query"
+  ls -l *.rpm
+  echo "Getting RPM"
   rpm=$(ls zfs-*.rpm | head -n 1)
+  echo "getting version from $rpm"
 
   # Get zfs version '2.2.99'
   zfs_ver=$(rpm -qpi $rpm | awk '/Version/{print $3}')
+  echo "version is $zfs_ver, getting major"
 
   # Get "2.1" or "2.2"
   zfs_major=$(echo $zfs_ver | grep -Eo [0-9]+\.[0-9]+)
+  echo "major is $zfs_major, getting buildhost"
 
   # Get 'almalinux9.5' or 'fedora41' type string
   build_host=$(rpm -qpi $rpm | awk '/Build Host/{print $4}')
 
+  echo "build_host is $build_host, getting osver"
+
   # Get '9.5' or '41' OS version
   os_ver=$(echo $build_host | grep -Eo '[0-9\.]+$')
+  echo "zfs_ver $zfs_ver, zfs_major $zfs_major, build_host $build_host, os_ver $os_ver"
 
   # Our ZFS version and OS name will determine which repo the RPMs
   # will go in (regular or testing).  Fedora always gets the newest
@@ -328,7 +337,13 @@ fi
 # almalinux9.5
 # fedora42
 source /etc/os-release
-sudo hostname "$ID$VERSION_ID"
+if which hostnamectl &> /dev/null ; then
+    # Fedora 42+ use hostnamectl
+    sudo hostnamectl set-hostname "$ID$VERSION_ID"
+    sudo hostnamectl set-hostname --pretty "$ID$VERSION_ID"
+else
+    sudo hostname "$ID$VERSION_ID"
+fi
 
 # save some sysinfo
 uname -a > /var/tmp/uname.txt
