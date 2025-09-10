@@ -45,13 +45,15 @@ static unsigned char bigbuffer[BIGBUFFERSIZE];
 static void usage(char *);
 
 /*
- * pseudo-randomize the buffer
+ * pseudo-randomize the buffer.  We take a new, per-block, random value, and
+ * XOR it with the existing buffer value.  This is ~20x faster than setting each
+ * byte to rand().  Since the buffer is initialized at program startup with
+ * random bytes from rand(), the XOR here still gives good psudorandom effects.
  */
 static void randomize_buffer(int block_size) {
 	int i;
-	char rnd = rand() & 0xff;
 	for (i = 0; i < block_size; i++)
-		bigbuffer[i] ^= rnd;
+		bigbuffer[i] = rand() & 0xff;
 }
 
 int
@@ -154,6 +156,7 @@ main(int argc, char **argv)
 	if (fillchar == 'R')
 		srand(time(NULL));
 
+	/* Initialize the buffer */
 	for (i = 0; i < block_size; i++) {
 		bigbuffer[i] = nxtfillchar;
 

@@ -66,7 +66,7 @@ typeset -i num_writes=20
 typeset -i dirnum=50
 typeset -i filenum=5000
 
-fill_fs "" $dirnum $filenum $bytes $num_writes
+fill_fs "" $dirnum $filenum $bytes $num_writes R
 retval=$?
 if (( retval == 28 )); then
 	log_note "No space left on device."
