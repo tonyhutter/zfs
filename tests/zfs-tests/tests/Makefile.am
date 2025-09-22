@@ -1029,6 +1029,7 @@ nobase_dist_datadir_zfs_tests_tests_SCRIPTS += \
 	functional/cli_root/zpool_add/zpool_add_009_neg.ksh \
 	functional/cli_root/zpool_add/zpool_add_010_pos.ksh \
 	functional/cli_root/zpool_add/zpool_add_dryrun_output.ksh \
+	functional/cli_root/zpool_add/zpool_add_safety.ksh \
 	functional/cli_root/zpool_attach/attach-o_ashift.ksh \
 	functional/cli_root/zpool_attach/cleanup.ksh \
 	functional/cli_root/zpool_attach/setup.ksh \
