@@ -33,9 +33,10 @@ function debian() {
   sudo apt-get upgrade -y
   echo "##[endgroup]"
 
+  # Leave out 'dkms' package to workaround GH issue 17802 on Debian 13
   echo "##[group]Install Development Tools"
   sudo apt-get install -y \
-    acl alien attr autoconf bc cpio cryptsetup curl dbench dh-python dkms \
+    acl alien attr autoconf bc cpio cryptsetup curl dbench dh-python \
     fakeroot fio gdb gdebi git ksh lcov isc-dhcp-client jq libacl1-dev \
     libaio-dev libattr1-dev libblkid-dev libcurl4-openssl-dev libdevmapper-dev \
     libelf-dev libffi-dev libmount-dev libpam0g-dev libselinux-dev libssl-dev \
