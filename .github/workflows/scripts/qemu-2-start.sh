@@ -149,6 +149,9 @@ case "$OS" in
     ;;
 esac
 
+sudo sudo apt install -y libosinfo-bin
+osinfo-query os | grep -Ei 'freebsd|fedora|centos|rhel'
+
 # environment file
 ENV="/var/tmp/env.txt"
 echo "ENV=$ENV" >> $ENV
