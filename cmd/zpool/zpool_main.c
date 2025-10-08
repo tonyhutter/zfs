@@ -1050,6 +1050,9 @@ nice_num_str_nvlist(nvlist_t *item, const char *key, uint64_t value,
 		case ZFS_NICENUM_BYTES:
 			zfs_nicenum_format(value, buf, 256, ZFS_NICENUM_BYTES);
 			break;
+		case ZFS_NICENUM_RAW:
+			zfs_nicenum_format(value, buf, 256, ZFS_NICENUM_RAW);
+			break;
 		case ZFS_NICENUM_TIME:
 			zfs_nicenum_format(value, buf, 256, ZFS_NICENUM_TIME);
 			break;
@@ -9571,99 +9574,96 @@ spares_nvlist(zpool_handle_t *zhp, status_cbdata_t *cb, nvlist_t *nv,
 	}
 }
 
+/*
+ * Take a uint64 nvpair named 'name' from nverrlist, nicenum-ify it, and
+ * put it back in 'nverrlist', possibly as a string, with the same 'name'.
+ */
+static void
+convert_nvlist_uint64_to_nicenum(status_cbdata_t *cb, nvlist_t *parent,
+    const char *name, enum zfs_nicenum_format format)
+{
+	uint64_t val;
+	nvpair_t *nvp;
+
+	if (nvlist_lookup_nvpair(parent, name, &nvp) != 0)
+		return;	/* nothing by that name, ignore */
+
+	val = fnvpair_value_uint64(nvp);
+	nvlist_remove_nvpair(parent, nvp);
+	nice_num_str_nvlist(parent, name, val,
+	    cb->cb_literal, cb->cb_json_as_int, format);
+}
+
 static void
 errors_nvlist(zpool_handle_t *zhp, status_cbdata_t *cb, nvlist_t *item)
 {
-	uint64_t nerr;
 	int verbosity = cb->cb_verbosity;
-	nvlist_t *config = zpool_get_config(zhp, NULL);
-	if (nvlist_lookup_uint64(config, ZPOOL_CONFIG_ERRCOUNT,
-	    &nerr) == 0) {
-		nice_num_str_nvlist(item, ZPOOL_CONFIG_ERRCOUNT, nerr,
-		    cb->cb_literal, cb->cb_json_as_int, ZFS_NICENUM_1024);
-		if (nerr != 0 && verbosity > 0) {
-			nvlist_t *nverrlist = NULL;
-			if (zpool_get_errlog(zhp, &nverrlist, verbosity) == 0) {
-				int i = 0;
-				int count = 0;
-				size_t len = MAXPATHLEN * 2;
-				nvpair_t *elem = NULL;
-				char **errl = NULL, *pathbuf = NULL;
-				nvlist_t **errnvl = NULL;
+	nvlist_t *nverrlist = NULL, *json;
+	nvpair_t *elem;
+	char *pathname;
+	size_t len = MAXPATHLEN * 2;
+	nvlist_t **ranges;
+	uint_t count;
 
-				for (nvpair_t *pair =
-				    nvlist_next_nvpair(nverrlist, NULL);
-				    pair != NULL;
-				    pair = nvlist_next_nvpair(nverrlist, pair))
-					count++;
-				if (verbosity < 2)
-					errl = calloc(count, sizeof (char *));
-				else {
-					pathbuf = safe_malloc(len);
-					errnvl = calloc(count,
-					    sizeof (nvlist_t *));
-				}
-				if (errl == NULL && errnvl == NULL) {
-					perror("calloc");
-					exit(1);
-				}
+	if (zpool_get_errlog(zhp, &nverrlist) != 0)
+		return;
 
-				while ((elem = nvlist_next_nvpair(nverrlist,
-				    elem)) != NULL) {
-					nvlist_t *nv;
-					uint64_t dsobj, obj;
+	pathname = safe_malloc(len);
+	json = fnvlist_alloc();
 
-					verify(nvpair_value_nvlist(elem,
-					    &nv) == 0);
-					verify(nvlist_lookup_uint64(nv,
-					    ZPOOL_ERR_DATASET, &dsobj) == 0);
-					verify(nvlist_lookup_uint64(nv,
-					    ZPOOL_ERR_OBJECT, &obj) == 0);
-					if (verbosity < 2) {
-						errl[i] = safe_malloc(len);
-						zpool_obj_to_path(zhp, dsobj,
-						    obj, errl[i++], len);
-					} else {
-						uint64_t lvl, blkid;
+	elem = NULL;
+	while ((elem = nvlist_next_nvpair(nverrlist, elem)) != NULL) {
+		nvlist_t *nv;
+		uint64_t dsobj, obj;
 
-						errnvl[i] = fnvlist_alloc();
-						lvl = fnvlist_lookup_uint64(nv,
-						    ZPOOL_ERR_LEVEL);
-						blkid = fnvlist_lookup_uint64(
-						    nv, ZPOOL_ERR_BLKID);
-						zpool_obj_to_path(zhp, dsobj,
-						    obj, pathbuf, len);
-						fnvlist_add_string(errnvl[i],
-						    "path", pathbuf);
-						fnvlist_add_uint64(errnvl[i],
-						    "level", lvl);
-						fnvlist_add_uint64(errnvl[i++],
-						    "record", blkid);
-					}
-				}
-				nvlist_free(nverrlist);
-				if (verbosity < 2) {
-					fnvlist_add_string_array(item,
-					    "errlist", (const char **)errl,
-					    count);
-					for (int i = 0; i < count; ++i)
-						free(errl[i]);
-					free(errl);
-				} else {
-					fnvlist_add_nvlist_array(item,
-					    "errlist",
-					    (const nvlist_t **)errnvl,
-					    count);
-					for (int i = 0; i < count; ++i)
-						free(errnvl[i]);
-					free(errnvl);
-					free(pathbuf);
-				}
-			} else
-				fnvlist_add_string(item, "errlist",
-				    strerror(errno));
+		verify(nvpair_value_nvlist(elem, &nv) == 0);
+
+		dsobj = fnvlist_lookup_uint64(nv, ZPOOL_ERR_DATASET);
+		obj = fnvlist_lookup_uint64(nv, ZPOOL_ERR_OBJECT);
+
+		zpool_obj_to_path(zhp, dsobj, obj, pathname, len);
+
+		/*
+		 * Each JSON entry is a different file/zvol.  If user has
+		 * verbosity = 1, then just make a simple object containing
+		 * the name.
+		 */
+		if (verbosity <= 1) {
+			nvlist_t *nameonly;
+			nameonly = fnvlist_alloc();
+			fnvlist_add_string(nameonly, ZPOOL_ERR_NAME, pathname);
+			fnvlist_add_nvlist(json, pathname, nameonly);
+			nvlist_free(nameonly);
+			continue;
 		}
+
+		fnvlist_add_string(nv, ZPOOL_ERR_NAME, pathname);
+
+		/* nicenum-ify our nvlist */
+		convert_nvlist_uint64_to_nicenum(cb, nv, ZPOOL_ERR_OBJECT,
+		    ZFS_NICENUM_RAW);
+		convert_nvlist_uint64_to_nicenum(cb, nv, ZPOOL_ERR_DATASET,
+		    ZFS_NICENUM_RAW);
+		convert_nvlist_uint64_to_nicenum(cb, nv, ZPOOL_ERR_BLOCK_SIZE,
+		    ZFS_NICENUM_1024);
+
+		if (nvlist_lookup_nvlist_array(nv, ZPOOL_ERR_RANGES, &ranges,
+		    &count) == 0) {
+			for (uint_t i = 0; i < count; i++) {
+				convert_nvlist_uint64_to_nicenum(cb, ranges[i],
+				    ZPOOL_ERR_START_BYTE, ZFS_NICENUM_1024);
+				convert_nvlist_uint64_to_nicenum(cb, ranges[i],
+				    ZPOOL_ERR_END_BYTE, ZFS_NICENUM_1024);
+			}
+		}
+
+		fnvlist_add_nvlist(json, pathname, nv);
 	}
+
+	/* Place our error list in a top level "errors" JSON object. */
+	fnvlist_add_nvlist(item, ZPOOL_ERR_JSON, json);
+	free(pathname);
+	nvlist_free(nverrlist);
 }
 
 static void
@@ -10334,8 +10334,9 @@ print_checkpoint_status(pool_checkpoint_stat_t *pcs)
 	    space_buf);
 }
 
+
 static void
-print_error_log(zpool_handle_t *zhp, int verbosity)
+print_error_log(zpool_handle_t *zhp, int verbosity, boolean_t literal)
 {
 	nvlist_t *nverrlist = NULL;
 	nvpair_t *elem;
@@ -10343,7 +10344,7 @@ print_error_log(zpool_handle_t *zhp, int verbosity)
 	size_t len = MAXPATHLEN * 2;
 	boolean_t started = B_FALSE;
 
-	if (zpool_get_errlog(zhp, &nverrlist, verbosity) != 0)
+	if (zpool_get_errlog(zhp, &nverrlist) != 0)
 		return;
 
 	(void) printf("errors: Permanent errors have been "
@@ -10362,8 +10363,7 @@ print_error_log(zpool_handle_t *zhp, int verbosity)
 		    &obj) == 0);
 		zpool_obj_to_path(zhp, dsobj, obj, pathname, len);
 		if (last_pathname == NULL ||
-		    0 != strncmp(pathname, last_pathname, len))
-		{
+		    0 != strncmp(pathname, last_pathname, len)) {
 			last_pathname = strdup(pathname);
 			if (started)
 				(void) printf("\n");
@@ -10374,47 +10374,32 @@ print_error_log(zpool_handle_t *zhp, int verbosity)
 			(void) printf(",");
 		}
 		if (verbosity > 1) {
-			uint64_t level, blkid, blkid_next, blkid_start;
+			nvlist_t **arr;
+			uint_t count;
+			if (nvlist_lookup_nvlist_array(nv, ZPOOL_ERR_RANGES,
+			    &arr, &count) != 0) {
+				printf("(no ranges)");
+				continue;
+			}
 
-			blkid = fnvlist_lookup_uint64(nv, ZPOOL_ERR_BLKID);
-			blkid_start = blkid;
-			level = fnvlist_lookup_uint64(nv, ZPOOL_ERR_LEVEL);
-			(void) printf("L%lu=", level);
-			do {
-				uint64_t level_next;
-				uint64_t dsobj_next, obj_next;
-
-				elem = nvlist_next_nvpair(nverrlist, elem);
-				if (elem == NULL)
-				{
-					elem = nvlist_prev_nvpair(nverrlist,
-					    elem);
-					break;
+			for (uint_t i = 0; i < count; i++) {
+				uint64_t start;
+				uint64_t end;
+				start = fnvlist_lookup_uint64(arr[i],
+				    ZPOOL_ERR_START_BYTE);
+				end = fnvlist_lookup_uint64(arr[i],
+				    ZPOOL_ERR_END_BYTE);
+				if (literal) {
+					(void) printf("%lu-%lu", start, end);
+				} else {
+					char s1[32], s2[32];
+					zfs_nicenum(start, s1, sizeof (s1));
+					zfs_nicenum(end, s2, sizeof (s2));
+					(void) printf("%s-%s", s1, s2);
 				}
-				nv = fnvpair_value_nvlist(elem);
-				dsobj_next = fnvlist_lookup_uint64(nv,
-				    ZPOOL_ERR_DATASET);
-				obj_next = fnvlist_lookup_uint64(nv,
-				    ZPOOL_ERR_OBJECT);
-				blkid_next = fnvlist_lookup_uint64(nv,
-				    ZPOOL_ERR_BLKID);
-				level_next = fnvlist_lookup_uint64(nv,
-				    ZPOOL_ERR_LEVEL);
-				if (dsobj != dsobj_next || obj != obj_next ||
-				    level != level_next ||
-				    blkid + 1 != blkid_next)
-				{
-					elem = nvlist_prev_nvpair(nverrlist,
-					    elem);
-					break;
-				}
-				blkid = blkid_next;
-			} while(1) ;
-
-			if (blkid > blkid_start)
-				(void) printf("%lu-%lu", blkid_start, blkid);
-			else
-				(void) printf("%lu", blkid);
+				if (i != count - 1)
+					printf(",");
+			}
 		}
 	}
 	(void) printf("\n");
@@ -11122,7 +11107,8 @@ status_callback(zpool_handle_t *zhp, void *data)
 				    (u_longlong_t)nerr);
 				color_end();
 			} else {
-				print_error_log(zhp, cbp->cb_verbosity);
+				print_error_log(zhp, cbp->cb_verbosity,
+				    cbp->cb_literal);
 			}
 		}
 

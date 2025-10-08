@@ -481,7 +481,7 @@ _LIBZFS_H nvlist_t *zpool_get_features(zpool_handle_t *);
 _LIBZFS_H int zpool_refresh_stats(zpool_handle_t *, boolean_t *);
 _LIBZFS_H void zpool_refresh_stats_from_handle(zpool_handle_t *,
     zpool_handle_t *);
-_LIBZFS_H int zpool_get_errlog(zpool_handle_t *, nvlist_t **, int);
+_LIBZFS_H int zpool_get_errlog(zpool_handle_t *, nvlist_t **);
 _LIBZFS_H void zpool_add_propname(zpool_handle_t *, const char *);
 
 /*
