@@ -18,7 +18,7 @@ concurrency:
 jobs:
   test-config:
     name: Setup
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-24.04-arm
     outputs:
       test_os: ${{ steps.os.outputs.os }}
       ci_type: ${{ steps.os.outputs.ci_type }}
@@ -29,6 +29,12 @@ jobs:
       - name: Generate OS config and CI type
         id: os
         run: |
+          echo "ENDIAN"
+          lscpu | grep "Byte Order" || true 
+          cat /proc/cpuinfo
+          free -h
+          python -c "import sys; print(sys.byteorder)" || true
+          echo -n I | od -to2 | awk 'FNR==1{if (substr($2,6,1) == 1) print "Little-Endian"; else print "Big-Endian"}'
           FULL_OS='["almalinux8", "almalinux9", "almalinux10", "centos-stream9", "centos-stream10", "debian12", "debian13", "fedora41", "fedora42", "freebsd13-5r", "freebsd14-3s", "freebsd15-0c", "ubuntu22", "ubuntu24"]'
           QUICK_OS='["almalinux8", "almalinux9", "almalinux10", "debian12", "fedora42", "freebsd14-3s", "ubuntu24"]'
           # determine CI type when running on PR
