@@ -88,8 +88,12 @@ case "$1" in
     TDIR="/usr/share/zfs"
     sudo -E modprobe zfs
     sudo mv -f /var/tmp/*.txt /tmp
-    sudo mkfs.xfs -fq /dev/vdb
-    sudo mount -o noatime /dev/vdb /var/tmp
+    if [ -b /dev/vdb ] ; then
+      sudo mkfs.xfs -fq /dev/vdb
+      sudo mount -o noatime /dev/vdb /var/tmp
+    else
+      mkdir -p /var/tmp
+    fi
     sudo chmod 1777 /var/tmp
     sudo mv -f /tmp/*.txt /var/tmp
     ;;
@@ -105,7 +109,9 @@ esac
 # run functional testings and save exitcode
 cd /var/tmp
 TAGS=$2/$3
-if [ "$4" == "quick" ]; then
+
+# Test if $4 is set before evaluating it
+if [ "$#" -ge 4 ] && [ "$4" == "quick" ]; then
   export RUNFILES="sanity.run"
 fi
 sudo dmesg -c > dmesg-prerun.txt

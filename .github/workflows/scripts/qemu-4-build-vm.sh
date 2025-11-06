@@ -65,7 +65,8 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-set -eu
+# set -u
+set -x
 
 function run() {
   LOG="/var/tmp/build-stderr.txt"
@@ -289,14 +290,14 @@ function deb_build_and_install() {
   extra="${1:-}"
 
   echo "##[group]Autogen.sh"
-  run ./autogen.sh
+  ./autogen.sh
   echo "##[endgroup]"
 
   echo "##[group]Configure"
-  run ./configure \
+  ./configure \
     --prefix=/usr \
     --enable-pyzfs \
-    --enable-debuginfo $extra
+    --enable-debuginfo $extra 2>&1
   echo "##[endgroup]"
 
   echo "##[group]Build"
@@ -338,25 +339,38 @@ fi
 # rhel8.10
 # almalinux9.5
 # fedora42
-source /etc/os-release
- if which hostnamectl &> /dev/null ; then
-  # Fedora 42+ use hostnamectl
-  sudo hostnamectl set-hostname "$ID$VERSION_ID"
-  sudo hostnamectl set-hostname --pretty "$ID$VERSION_ID"
-else
-  sudo hostname "$ID$VERSION_ID"
-fi
 
 # save some sysinfo
 uname -a > /var/tmp/uname.txt
 
-cd $HOME/zfs
+echo "1"
+sleep 0.5
+echo "2"
+sleep 0.5
+echo "3"
+sleep 0.5
+echo "4"
+sleep 0.5
+echo "5"
+sleep 0.5
+
+
+
+ls -l
+
+if [ ! -e META ] ; then 
+    # We're not already in our ZFS source dir, so we must be in a VM rather
+    # than running nativity on a runner.
+    cd $HOME/zfs
+fi
+
 export PATH="$PATH:/sbin:/usr/sbin:/usr/local/sbin"
 
 extra=""
 if [ -n "$ENABLE_DEBUG" ] ; then
   extra="--enable-debug"
 fi
+
 
 # build
 case "$OS" in

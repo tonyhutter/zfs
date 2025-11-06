@@ -2,9 +2,12 @@
 
 ######################################################################
 # 3) install dependencies for compiling and loading
+# 
+# qemu-3-deps-vm.sh [--poweroff] OS_NAME [FEDORA_VERSION]
 #
-# $1: OS name (like 'fedora41')
-# $2: (optional) Experimental Fedora kernel version, like "6.14" to
+# --poweroff: Power off the VM after installing dependencies
+# OS_NAME: OS name (like 'fedora41')
+# FEDORA_VERSION: (optional) Experimental Fedora kernel version, like "6.14" to
 #     install instead of Fedora defaults.
 ######################################################################
 
@@ -117,6 +120,12 @@ function install_fedora_experimental_kernel {
   sudo dnf -y copr disable @kernel-vanilla/stable
   sudo dnf -y copr disable @kernel-vanilla/mainline
 }
+
+POWEROFF=""
+if [ "$1" == "--poweroff" ] ; then
+        POWEROFF=1
+        shift
+fi
 
 # Install dependencies
 case "$1" in
@@ -242,6 +251,7 @@ case "$1" in
     ;;
 esac
 
+
 case "$1" in
   archlinux|freebsd*)
     true
@@ -258,5 +268,7 @@ esac
 
 # reset cloud-init configuration and poweroff
 sudo cloud-init clean --logs
-sleep 2 && sudo poweroff &
+if [ $POWEROFF == "1" ] ; then
+        sleep 2 && sudo poweroff &
+fi
 exit 0
