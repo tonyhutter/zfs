@@ -350,7 +350,12 @@ fi
 # save some sysinfo
 uname -a > /var/tmp/uname.txt
 
-cd $HOME/zfs
+if [ ! -e META ] ; then
+  # We're not already in our ZFS source dir, so we must be in a VM rather
+  # than running nativity on a runner.
+  cd $HOME/zfs
+fi
+
 export PATH="$PATH:/sbin:/usr/sbin:/usr/local/sbin"
 
 extra=""

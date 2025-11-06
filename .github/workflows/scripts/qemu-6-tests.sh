@@ -181,8 +181,12 @@ case "$OS" in
     TDIR="/usr/share/zfs"
     sudo -E modprobe zfs
     sudo mv -f /var/tmp/*.txt /tmp
-    sudo mkfs.xfs -fq /dev/vdb
-    sudo mount -o noatime /dev/vdb /var/tmp
+    if [ -b /dev/vdb ] ; then
+      sudo mkfs.xfs -fq /dev/vdb
+      sudo mount -o noatime /dev/vdb /var/tmp
+    else
+      mkdir -p /var/tmp
+    fi
     sudo chmod 1777 /var/tmp
     sudo mv -f /tmp/*.txt /var/tmp
     ;;
