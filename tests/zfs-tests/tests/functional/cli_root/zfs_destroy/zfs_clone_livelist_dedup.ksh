@@ -49,7 +49,7 @@ function test_dedup
 	log_must zfs set dedup=on $TESTPOOL/$TESTCLONE
 
 	# Create some data to be deduped
-	log_must dd if=/dev/urandom of="/$TESTPOOL/$TESTCLONE/data" bs=512 count=10k
+	log_must randomdd of="/$TESTPOOL/$TESTCLONE/data" bs=512 count=10k
 
 	# Create dedup blocks
 	# Note: We sync before and after so all dedup blocks belong to the

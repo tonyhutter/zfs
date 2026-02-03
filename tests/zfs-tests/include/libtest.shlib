@@ -54,6 +54,15 @@ if [ -n "$STF_PATH" ]; then
 	export PATH="$STF_PATH"
 fi
 
+# Running 'dd if=/dev/urandom ...' can be really slow.  Use 'randomdd' in the
+# place of 'dd if=/dev/urandom' instead.  It can take all the 'dd' args and
+# runs much faster since it uses the psudorandom output from
+# 'file_write -d R ...' instead.
+#
+# We have to define this as an alias instead of a function since many of the
+# tests will spawn it off in the background and then try to kill it.
+alias randomdd='file_write -o create -b 65536 -c 99999999 -d R | dd'
+
 #
 # Generic dot version comparison function
 #
@@ -3018,7 +3027,7 @@ function write_compressible
 
 			# Write every third block to get 66% compression.
 			for (( j = 0; j < $blocks; j += 3 )); do
-				dd if=/dev/urandom of=$dir/$fname.$i \
+				randomdd of=$dir/$fname.$i \
 				    seek=$j bs=$bs_bytes count=1 \
 				    conv=notrunc >/dev/null 2>&1
 			done

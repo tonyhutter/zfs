@@ -68,7 +68,7 @@ log_mustnot eval "zdb -dddd $TESTPOOL 1 | grep -q DDT-skein"
 log_mustnot eval "zdb -dddd $TESTPOOL 1 | grep -q DDT-blake3"
 
 # create a file in the first dataset
-log_must dd if=/dev/urandom of=/$TESTPOOL/ds1/file1 bs=128k count=4
+log_must randomdd of=/$TESTPOOL/ds1/file1 bs=128k count=4
 log_must zpool sync
 
 # should be four entries in the skein unique table
@@ -84,7 +84,7 @@ log_must zpool set feature@fast_dedup=enabled $TESTPOOL
 log_must test $(get_pool_prop feature@fast_dedup $TESTPOOL) = "enabled"
 
 # create a file in the first dataset
-log_must dd if=/dev/urandom of=/$TESTPOOL/ds2/file1 bs=128k count=4
+log_must randomdd of=/$TESTPOOL/ds2/file1 bs=128k count=4
 log_must zpool sync
 
 # feature should now be active

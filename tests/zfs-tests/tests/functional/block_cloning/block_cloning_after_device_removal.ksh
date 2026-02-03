@@ -51,11 +51,11 @@ function cleanup
 log_onexit cleanup
 
 log_must zpool create -o feature@block_cloning=enabled $TESTPOOL $VDEV
-log_must dd if=/dev/urandom of=/$TESTPOOL/file bs=16M count=2
+log_must randomdd of=/$TESTPOOL/file bs=16M count=2
 log_must zpool remove -w $TESTPOOL $VDIR/1
 log_must zfs create $TESTPOOL/$TESTFS
 log_must clonefile -f /$TESTPOOL/file /$TESTPOOL/$TESTFS/file
-log_must dd if=/dev/urandom of=/$TESTPOOL/file bs=16M count=2
+log_must randomdd of=/$TESTPOOL/file bs=16M count=2
 log_must zfs destroy -r $TESTPOOL/$TESTFS
 
 log_pass $claim

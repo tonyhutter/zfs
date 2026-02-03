@@ -57,7 +57,7 @@ log_onexit cleanup
 log_must zfs set recordsize=128k $TESTPOOL/$TESTFS
 
 log_must mkdir $TESTDIR/dir
-log_must dd if=/dev/urandom of=$TESTDIR/file1 bs=128k count=8
+log_must randomdd of=$TESTDIR/file1 bs=128k count=8
 log_must dd if=$TESTDIR/file1 of=$TESTDIR/dir/file2 bs=128k
 log_must sync_pool $TESTPOOL
 typeset orig_hash1=$(xxh128digest $TESTDIR/file1)

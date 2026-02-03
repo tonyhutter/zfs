@@ -45,6 +45,6 @@
 
 log_assert "Writing random data into /dev/zfs should do no harm."
 
-log_mustnot dd if=/dev/urandom of=/dev/zfs count=1024
+log_mustnot randomdd of=/dev/zfs count=1024
 
 log_pass "Writing random data into /dev/zfs should do no harm."

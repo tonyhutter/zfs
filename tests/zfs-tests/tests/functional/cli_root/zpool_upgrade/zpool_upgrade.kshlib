@@ -57,7 +57,7 @@ function create_old_pool
 
 	# Put some random contents into the pool
 	for i in {1..1024} ; do
-		dd if=/dev/urandom of=/$pool_name/random.$i \
+		randomdd of=/$pool_name/random.$i \
 		    count=1 bs=1024 > /dev/null 2>&1
 	done
 }

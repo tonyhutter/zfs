@@ -212,7 +212,7 @@ function corrupt_sized_label_checksum
 		"$(((L_PRACTICAL_SIZE - LABEL_SIZE*2) + LABEL_CKSUM_START))" \
 		"$(((L_PRACTICAL_SIZE - LABEL_SIZE) + LABEL_CKSUM_START))")
 
-	dd if=/dev/urandom of="$L_DEVICE" \
+	randomdd of="$L_DEVICE" \
 	    seek="${L_OFFSETS["$L_LABEL"]}" bs=1 count="$LABEL_CKSUM_SIZE" \
 	    conv=notrunc
 }

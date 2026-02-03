@@ -40,18 +40,18 @@ log_must zfs set checksum=skein $origin
 
 log_must zfs set copies=1 $origin
 log_must zfs set recordsize=8k $origin
-dd if=/dev/urandom of=$TESTDIR/file_8k bs=1024k count=$MEGS oflag=sync \
+randomdd of=$TESTDIR/file_8k bs=1024k count=$MEGS oflag=sync \
     conv=notrunc >/dev/null 2>&1 || log_fail "dd into $TESTDIR/file failed."
 log_must zfs set copies=3 $origin
-dd if=/dev/urandom of=$TESTDIR/file_8k_copies bs=1024k count=$MEGS oflag=sync \
+randomdd of=$TESTDIR/file_8k_copies bs=1024k count=$MEGS oflag=sync \
     conv=notrunc >/dev/null 2>&1 || log_fail "dd into $TESTDIR/file failed."
 
 log_must zfs set copies=1 $origin
 log_must zfs set recordsize=128k $origin
-dd if=/dev/urandom of=$TESTDIR/file_128k bs=1024k count=$MEGS oflag=sync \
+randomdd of=$TESTDIR/file_128k bs=1024k count=$MEGS oflag=sync \
     conv=notrunc >/dev/null 2>&1 || log_fail "dd into $TESTDIR/file failed."
 log_must zfs set copies=3 $origin
-dd if=/dev/urandom of=$TESTDIR/file_128k_copies bs=1024k \
+randomdd of=$TESTDIR/file_128k_copies bs=1024k \
     count=$MEGS oflag=sync conv=notrunc >/dev/null 2>&1 || \
     log_fail "dd into $TESTDIR/file failed."
 

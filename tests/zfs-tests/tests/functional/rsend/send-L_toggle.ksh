@@ -37,11 +37,11 @@ log_onexit cleanup
 
 log_must zfs create -o compression=on -o recordsize=1m $TESTPOOL/fs
 
-log_must dd if=/dev/urandom of=/$TESTPOOL/fs/file bs=1024 count=1500
+log_must randomdd of=/$TESTPOOL/fs/file bs=1024 count=1500
 
 log_must zfs snapshot $TESTPOOL/fs@snap
 
-log_must dd if=/dev/urandom of=/$TESTPOOL/fs/file bs=1024 count=1500 conv=notrunc seek=2048
+log_must randomdd of=/$TESTPOOL/fs/file bs=1024 count=1500 conv=notrunc seek=2048
 
 log_must zfs snapshot $TESTPOOL/fs@snap2
 

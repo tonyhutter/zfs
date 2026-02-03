@@ -83,7 +83,7 @@ log_must dd if=/dev/zero of=/$TESTPOOL/$TESTFS/sync \
 # allows us to overwrite it after the pool is frozen and avoid the case
 # where O_DIRECT is disabled because the first block must be grown.
 #
-log_must dd if=/dev/urandom of=/$TESTPOOL/$TESTFS/direct \
+log_must randomdd of=/$TESTPOOL/$TESTFS/direct \
     oflag=sync,direct bs=4k count=1
 
 #
@@ -117,14 +117,14 @@ log_must rmdir /$TESTPOOL/$TESTFS/dir_to_delete
 
 # Create a simple validation payload
 log_must mkdir -p $TESTDIR
-log_must dd if=/dev/urandom of=/$TESTPOOL/$TESTFS/payload \
+log_must randomdd of=/$TESTPOOL/$TESTFS/payload \
     oflag=sync bs=1k count=8
 typeset checksum=$(xxh128digest /$TESTPOOL/$TESTFS/payload)
 
 # TX_WRITE (small file with ordering)
-log_must dd if=/dev/urandom of=/$TESTPOOL/$TESTFS/small_file \
+log_must randomdd of=/$TESTPOOL/$TESTFS/small_file \
     oflag=sync bs=1k count=1
-log_must dd if=/dev/urandom of=/$TESTPOOL/$TESTFS/small_file \
+log_must randomdd of=/$TESTPOOL/$TESTFS/small_file \
     oflag=sync bs=512 count=1
 
 # TX_CREATE, TX_MKDIR, TX_REMOVE, TX_RMDIR
@@ -146,25 +146,25 @@ log_must mkfile 4k /$TESTPOOL/$TESTFS/truncated_file
 log_must truncate -s 0 /$TESTPOOL/$TESTFS/truncated_file
 
 # TX_WRITE (large file)
-log_must dd if=/dev/urandom of=/$TESTPOOL/$TESTFS/large \
+log_must randomdd of=/$TESTPOOL/$TESTFS/large \
     oflag=sync bs=128k count=64
 
 # TX_WRITE (O_DIRECT)
-log_must dd if=/dev/urandom of=/$TESTPOOL/$TESTFS/direct \
+log_must randomdd of=/$TESTPOOL/$TESTFS/direct \
     oflag=sync,direct bs=4k count=1
 
 # Write zeros, which compress to holes, in the middle of a file
-log_must dd if=/dev/urandom of=/$TESTPOOL/$TESTFS/holes.1 \
+log_must randomdd of=/$TESTPOOL/$TESTFS/holes.1 \
     oflag=sync bs=128k count=8
 log_must dd if=/dev/zero of=/$TESTPOOL/$TESTFS/holes.1 \
     oflag=sync bs=128k count=2
 
-log_must dd if=/dev/urandom of=/$TESTPOOL/$TESTFS/holes.2 \
+log_must randomdd of=/$TESTPOOL/$TESTFS/holes.2 \
     oflag=sync bs=128k count=8
 log_must dd if=/dev/zero of=/$TESTPOOL/$TESTFS/holes.2 \
     oflag=sync bs=128k count=2 seek=2
 
-log_must dd if=/dev/urandom of=/$TESTPOOL/$TESTFS/holes.3 \
+log_must randomdd of=/$TESTPOOL/$TESTFS/holes.3 \
     oflag=sync bs=128k count=8
 log_must dd if=/dev/zero of=/$TESTPOOL/$TESTFS/holes.3 \
     oflag=sync bs=128k count=2 seek=2 conv=notrunc
@@ -182,7 +182,7 @@ log_must rm_xattr tmpattr /$TESTPOOL/$TESTFS/xattr.file
 
 # TX_WRITE, TX_LINK, TX_REMOVE
 # Make sure TX_REMOVE won't affect TX_WRITE if file is not destroyed
-log_must dd if=/dev/urandom of=/$TESTPOOL/$TESTFS/link_and_unlink \
+log_must randomdd of=/$TESTPOOL/$TESTFS/link_and_unlink \
     oflag=sync bs=128k count=8
 log_must ln /$TESTPOOL/$TESTFS/link_and_unlink \
    /$TESTPOOL/$TESTFS/link_and_unlink.link
@@ -195,10 +195,10 @@ elif ! renameat2 -C ; then
 	log_note "renameat2 not supported on this (pre-3.15) linux kernel"
 else
 	# TX_RENAME_EXCHANGE
-	log_must dd if=/dev/urandom of=/$TESTPOOL/$TESTFS/xchg-a bs=1k count=1
-	log_must dd if=/dev/urandom of=/$TESTPOOL/$TESTFS/xchg-b bs=1k count=1
-	log_must dd if=/dev/urandom of=/$TESTPOOL/$TESTFS/xchg-c bs=1k count=1
-	log_must dd if=/dev/urandom of=/$TESTPOOL/$TESTFS/xchg-d bs=1k count=1
+	log_must randomdd of=/$TESTPOOL/$TESTFS/xchg-a bs=1k count=1
+	log_must randomdd of=/$TESTPOOL/$TESTFS/xchg-b bs=1k count=1
+	log_must randomdd of=/$TESTPOOL/$TESTFS/xchg-c bs=1k count=1
+	log_must randomdd of=/$TESTPOOL/$TESTFS/xchg-d bs=1k count=1
 	# rotate the files around
 	log_must renameat2 -x /$TESTPOOL/$TESTFS/xchg-{a,b}
 	log_must renameat2 -x /$TESTPOOL/$TESTFS/xchg-{b,c}

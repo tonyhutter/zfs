@@ -66,7 +66,7 @@ log_must zpool create -f $TESTPOOL $DISKS
 
 log_must zfs create -o dedup=on $TESTPOOL/$TESTFS
 typeset mountpoint=$(get_prop mountpoint $TESTPOOL/$TESTFS)
-log_must dd if=/dev/urandom of=$mountpoint/f1 bs=1M count=16
+log_must randomdd of=$mountpoint/f1 bs=1M count=16
 # We seems to need some amount of txg sync here to make it more consistently
 # reproducible
 for i in $(seq 50); do

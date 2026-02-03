@@ -107,7 +107,7 @@ log_must zfs rollback -R $clone@snap
 log_must zfs destroy -R $recvfs
 
 # Modifying some of a block redacts the whole block.
-log_must dd if=/dev/urandom of=$clone_mnt/f1 conv=notrunc seek=2 count=1 bs=32k
+log_must randomdd of=$clone_mnt/f1 conv=notrunc seek=2 count=1 bs=32k
 log_must zfs snapshot $clone@snap1
 log_must zfs redact $sendfs@snap book7 $clone@snap1
 log_must eval "zfs send --redact book7 $sendfs@snap >$stream"
@@ -117,11 +117,11 @@ log_must zfs rollback -R $clone@snap
 log_must zfs destroy -R $recvfs
 
 # Only overlapping areas of modified ranges are redacted.
-log_must dd if=/dev/urandom of=$clone_mnt/f2 bs=1024k count=3 conv=notrunc
+log_must randomdd of=$clone_mnt/f2 bs=1024k count=3 conv=notrunc
 log_must zfs snapshot $clone@snap1
 log_must zfs clone $sendfs@snap $clone/new
 typeset mntpnt="$(get_prop mountpoint $clone/new)"
-log_must dd if=/dev/urandom of=$mntpnt/f2 bs=1024k seek=1 count=3 \
+log_must randomdd of=$mntpnt/f2 bs=1024k seek=1 count=3 \
     conv=notrunc
 log_must zfs snapshot $clone/new@snap
 log_must zfs redact $sendfs@snap book8 $clone@snap1 $clone/new@snap
@@ -149,10 +149,10 @@ log_must zfs rollback -R $clone@snap
 log_must zfs destroy -R $recvfs
 
 # Send from the root dataset of a pool work correctly.
-log_must dd if=/dev/urandom of=/$POOL/f1 bs=128k count=4
+log_must randomdd of=/$POOL/f1 bs=128k count=4
 log_must zfs snapshot $POOL@snap
 log_must zfs clone $POOL@snap $POOL/clone
-log_must dd if=/dev/urandom of=/$POOL/clone/f1 bs=128k count=1 conv=notrunc
+log_must randomdd of=/$POOL/clone/f1 bs=128k count=1 conv=notrunc
 log_must zfs snapshot $POOL/clone@snap
 log_must zfs redact $POOL@snap book9 $POOL/clone@snap
 log_must eval "zfs send --redact book9 $POOL@snap >$stream"

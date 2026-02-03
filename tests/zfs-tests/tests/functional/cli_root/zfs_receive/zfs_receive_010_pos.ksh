@@ -52,7 +52,7 @@ function make_object
 	typeset mntpnt=$2
 	typeset type=$3
 	if [[ $type == "file" ]]; then
-		dd if=/dev/urandom of=${mntpnt}/f$objnum bs=512 count=16
+		randomdd of=${mntpnt}/f$objnum bs=512 count=16
 	elif [[ $type == "hole1" ]]; then
 		dd if=/dev/zero of=${mntpnt}/fh$objnum bs=512 count=5 seek=4 conv=notrunc
 	elif [[ $type == "hole2" ]]; then
@@ -131,7 +131,7 @@ create_pair 17 $mntpnt $mntpnt2 "missing" "missing"
 
 # Receive a file with a different record size onto a file (and vice versa).
 log_must zfs set recordsize=128k $fs
-dd if=/dev/urandom of=$mntpnt/f18 bs=128k count=64
+randomdd of=$mntpnt/f18 bs=128k count=64
 touch $mntpnt2/f18
 
 # Remove objects that are intended to be missing.

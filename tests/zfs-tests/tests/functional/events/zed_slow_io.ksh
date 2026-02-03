@@ -58,7 +58,7 @@ function do_setup
 	log_must zfs set prefetch=none $TESTPOOL
 	log_must zfs set recordsize=512 $TESTPOOL
 	for i in {1..10}; do
-		dd if=/dev/urandom of=${FILEPATH}$i bs=512 count=1 2>/dev/null
+		randomdd of=${FILEPATH}$i bs=512 count=1 2>/dev/null
 	done
 	zpool sync
 }

@@ -57,7 +57,7 @@ sync_pool $TESTPOOL
 #
 # 2. Populate the source file with 1024 blocks at 1024 block offset.
 #
-log_must dd if=/dev/urandom of=/$TESTPOOL/file1 \
+log_must randomdd of=/$TESTPOOL/file1 \
     oflag=sync bs=128k count=1024 seek=1024
 sync_pool $TESTPOOL
 

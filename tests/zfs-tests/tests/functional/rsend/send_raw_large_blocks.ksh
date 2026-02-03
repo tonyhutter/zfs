@@ -66,7 +66,7 @@ log_must zpool create -f -o feature@large_blocks=enabled pool_lb $TESTDIR/vdev_a
 log_must eval "echo $passphrase > /pool_lb/pwd"
 
 log_must zfs create -o recordsize=1m pool_lb/fs
-log_must dd if=/dev/urandom of=$file bs=1024 count=1024
+log_must randomdd of=$file bs=1024 count=1024
 log_must zfs snapshot pool_lb/fs@snap1
 
 log_must eval "zfs send -L pool_lb/fs@snap1 > $backup"

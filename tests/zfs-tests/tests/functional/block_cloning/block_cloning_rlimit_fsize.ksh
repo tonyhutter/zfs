@@ -55,7 +55,7 @@ log_must truncate -s 1G $VDEV
 
 log_must zpool create -o feature@block_cloning=enabled $TESTPOOL $VDEV
 
-log_must dd if=/dev/urandom of=/$TESTPOOL/file1 bs=1 count=1000
+log_must randomdd of=/$TESTPOOL/file1 bs=1 count=1000
 
 ulimit -f 2
 log_must clonefile -f /$TESTPOOL/file1 /$TESTPOOL/file2 0 0 all

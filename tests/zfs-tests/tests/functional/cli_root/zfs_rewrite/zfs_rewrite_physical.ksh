@@ -56,7 +56,7 @@ log_onexit cleanup
 log_must zfs set recordsize=128k $TESTPOOL/$TESTFS
 
 # Create test file and initial snapshot
-log_must dd if=/dev/urandom of=$TESTDIR/testfile bs=128k count=4
+log_must randomdd of=$TESTDIR/testfile bs=128k count=4
 log_must sync_pool $TESTPOOL
 typeset orig_hash=$(xxh128digest $TESTDIR/testfile)
 log_must zfs snapshot $TESTPOOL/$TESTFS@snap1

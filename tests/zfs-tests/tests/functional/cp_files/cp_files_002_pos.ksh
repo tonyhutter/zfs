@@ -95,7 +95,7 @@ for mode in "never" "auto" "always"; do
 	log_note "Checking 'cp --reflink=$mode'"
 
 	# Create a new file and immediately copy it.
-	log_must dd if=/dev/urandom of=$SRC_FILE bs=$RECORDSIZE count=$SRC_SIZE
+	log_must randomdd of=$SRC_FILE bs=$RECORDSIZE count=$SRC_SIZE
 
 	if [[ "$mode" == "always" ]]; then
 		log_mustnot cp --reflink=$mode $SRC_FILE $DST_FILE
@@ -108,7 +108,7 @@ for mode in "never" "auto" "always"; do
 
 	# Append to an existing file and immediately copy it.
 	sync_pool $TESTPOOL
-	log_must dd if=/dev/urandom of=$SRC_FILE bs=$RECORDSIZE seek=$SRC_SIZE \
+	log_must randomdd of=$SRC_FILE bs=$RECORDSIZE seek=$SRC_SIZE \
 	    count=1 conv=notrunc
 	if [[ "$mode" == "always" ]]; then
 		log_mustnot cp --reflink=$mode $SRC_FILE $DST_FILE
@@ -121,7 +121,7 @@ for mode in "never" "auto" "always"; do
 
 	# Overwrite a random range of an existing file and immediately copy it.
 	sync_pool $TESTPOOL
-	log_must dd if=/dev/urandom of=$SRC_FILE bs=$((RECORDSIZE / 2)) \
+	log_must randomdd of=$SRC_FILE bs=$((RECORDSIZE / 2)) \
             seek=$(($RANDOM % $SRC_SIZE)) count=$((1 + $RANDOM % 16)) conv=notrunc
 	if [[ "$mode" == "always" ]]; then
 		log_mustnot cp --reflink=$mode $SRC_FILE $DST_FILE
@@ -140,20 +140,20 @@ for mode in "never" "auto" "always"; do
 	log_note "Checking 'cp --reflink=$mode'"
 
 	# Create a new file and immediately copy it.
-	log_must dd if=/dev/urandom of=$SRC_FILE bs=$RECORDSIZE count=$SRC_SIZE
+	log_must randomdd of=$SRC_FILE bs=$RECORDSIZE count=$SRC_SIZE
 	log_must cp --reflink=$mode $SRC_FILE $DST_FILE
 	verify_copy $SRC_FILE $DST_FILE
 	log_must rm -f $DST_FILE
 
 	# Append to an existing file and immediately copy it.
-	log_must dd if=/dev/urandom of=$SRC_FILE bs=$RECORDSIZE seek=$SRC_SIZE \
+	log_must randomdd of=$SRC_FILE bs=$RECORDSIZE seek=$SRC_SIZE \
 	    count=1 conv=notrunc
 	log_must cp --reflink=$mode $SRC_FILE $DST_FILE
 	verify_copy $SRC_FILE $DST_FILE
 	log_must rm -f $DST_FILE
 
 	# Overwrite a random range of an existing file and immediately copy it.
-	log_must dd if=/dev/urandom of=$SRC_FILE bs=$((RECORDSIZE / 2)) \
+	log_must randomdd of=$SRC_FILE bs=$((RECORDSIZE / 2)) \
             seek=$(($RANDOM % $SRC_SIZE)) count=$((1 + $RANDOM % 16)) conv=notrunc
 	log_must cp --reflink=$mode $SRC_FILE $DST_FILE
 	verify_copy $SRC_FILE $DST_FILE

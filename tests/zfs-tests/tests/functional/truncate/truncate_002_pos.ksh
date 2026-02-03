@@ -54,7 +54,7 @@ function cleanup
 log_assert "Ensure zeroed file gets written correctly during a sync operation"
 
 srcfile="$TESTDIR/cosmo.$$"
-log_must dd if=/dev/urandom of=$srcfile bs=1024k count=1
+log_must randomdd of=$srcfile bs=1024k count=1
 
 log_onexit cleanup
 log_must cp $srcfile $TESTDIR/$TESTFILE

@@ -112,7 +112,7 @@ function histo_populate_test_pool
 			# there are errors
 			####################
 
-			dd if=/dev/urandom \
+			randomdd \
 			    of=/${pool}/B_${this_rs}/file_${filenum} \
 			    bs=${this_rs} count=${thiscount} \
 			    iflag=fullblock 2>&1 | \

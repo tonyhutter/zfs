@@ -103,7 +103,7 @@ log_must zfs snapshot "$SNAP"
 log_must zfs clone "$SNAP" "$CLONE"
 # Add some data to the clone
 for i in {1..50}; do
-	log_must dd if=/dev/urandom of="/$CLONE/testfile$i" bs=1k count=512
+	log_must randomdd of="/$CLONE/testfile$i" bs=1k count=512
 	# Force each new file to be tracked by a new livelist
 	sync_pool $TESTPOOL
 done

@@ -41,7 +41,7 @@ log_must eval "echo 'password' > $keyfile"
 bs=1024k
 count=512
 
-log_must dd if=/dev/urandom of=$TESTDIR/data bs=$bs count=$count
+log_must randomdd of=$TESTDIR/data bs=$bs count=$count
 data_checksum=$(xxh128digest $TESTDIR/data)
 
 # Test common large block configuration.

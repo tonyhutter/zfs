@@ -78,7 +78,7 @@ log_onexit cleanup
 BS=512 ; CNT=2048
 SRC_FILE=$TESTDIR/srcfile.$$
 DST_FILE=$TESTDIR/dstfile.$$
-log_must dd if=/dev/urandom of=$SRC_FILE bs=$BS count=$CNT
+log_must randomdd of=$SRC_FILE bs=$BS count=$CNT
 
 fs=$TESTPOOL/$TESTFS/fs.$$
 fsclone=$TESTPOOL/$TESTFS/fsclone.$$

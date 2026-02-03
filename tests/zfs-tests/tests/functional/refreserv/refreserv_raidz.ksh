@@ -95,7 +95,7 @@ for parity in 1 2 3; do
 			block_device_wait $zdev
 			blockdev_exists $zdev
 
-			log_must timeout 120 dd if=/dev/urandom of=$zdev \
+			log_must timeout 120 randomdd of=$zdev \
 			    bs=1024k count=$volsize status=progress
 			sync_pool $TESTPOOL
 

@@ -75,7 +75,7 @@ log_must test $new_size -gt $(( floor(LARGESIZE * 0.70) ))
 
 # Expand the pool to create new unallocated metaslabs.
 log_must zpool export $TESTPOOL
-log_must dd if=/dev/urandom of=$LARGEFILE conv=notrunc,nocreat \
+log_must randomdd of=$LARGEFILE conv=notrunc,nocreat \
     seek=$((LARGESIZE / (1024 * 1024))) bs=$((1024 * 1024)) \
     count=$((3 * LARGESIZE / (1024 * 1024)))
 log_must zpool import -d $TESTDIR $TESTPOOL

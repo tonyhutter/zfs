@@ -51,7 +51,7 @@ function wait_for_removal # pool
 #
 # Example usage:
 #
-#    attempt_during_removal $TESTPOOL $DISK dd if=/dev/urandom \
+#    attempt_during_removal $TESTPOOL $DISK randomdd \
 #        of=/$TESTPOOL/file count=1
 #
 function attempt_during_removal # pool disk callback [args]
@@ -98,7 +98,7 @@ function random_write # file write_size
 
 	[[ -w $file ]] || return 1
 
-	dd if=/dev/urandom of=$file conv=notrunc \
+	randomdd of=$file conv=notrunc \
 	    bs=$block_size count=1 seek=$((RANDOM % nblocks)) >/dev/null 2>&1
 }
 

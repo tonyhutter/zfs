@@ -57,11 +57,11 @@ log_must eval "get_diff $send_mnt/f2 $recv_mnt/f2 >$tmpdir/get_diff.out"
 typeset range=$(<$tmpdir/get_diff.out)
 [[ "$RANGE9" = "$range" ]] || log_fail "Unexpected range: $range"
 
-log_must dd if=/dev/urandom of=$send_mnt/f3 bs=1024k count=3
+log_must randomdd of=$send_mnt/f3 bs=1024k count=3
 log_must zfs snapshot $sendfs@snap2
 log_must zfs clone $sendfs@snap2 $clone1
 typeset clone1_mnt="$(get_prop mountpoint $clone1)"
-log_must dd if=/dev/urandom of=$clone1_mnt/f3 bs=128k count=3 conv=notrunc
+log_must randomdd of=$clone1_mnt/f3 bs=128k count=3 conv=notrunc
 log_must zfs snapshot $clone1@snap
 
 # Do the incremental resumable send

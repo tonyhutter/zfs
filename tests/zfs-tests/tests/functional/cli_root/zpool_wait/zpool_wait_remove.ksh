@@ -47,7 +47,7 @@ function do_test
 	typeset use_flag=$1
 
 	log_must zpool create -f $TESTPOOL $DISK1 $DISK2
-	log_must dd if=/dev/urandom of="/$TESTPOOL/testfile" bs=1k count=16k
+	log_must randomdd of="/$TESTPOOL/testfile" bs=1k count=16k
 
 	# Start removal, but don't allow it to make any progress at first
 	log_must set_tunable32 REMOVAL_SUSPEND_PROGRESS 1

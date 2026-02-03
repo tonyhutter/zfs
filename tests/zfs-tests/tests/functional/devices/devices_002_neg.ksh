@@ -60,12 +60,12 @@ log_must zfs set devices=off $TESTPOOL/$TESTFS
 # Verify it cannot be opened, written, and read.
 #
 create_dev_file b $TESTDIR/$TESTFILE1 $ZVOL_DEVDIR/$TESTPOOL/$TESTVOL
-log_mustnot dd if=/dev/urandom of=$TESTDIR/$TESTFILE1 count=1 bs=128k
+log_mustnot randomdd of=$TESTDIR/$TESTFILE1 count=1 bs=128k
 log_mustnot dd if=$TESTDIR/$TESTFILE1 of=/dev/null count=1 bs=128k
 
 # Create character device file backed by /dev/null
 # Verify it cannot be opened and written.
 create_dev_file c $TESTDIR/$TESTFILE2
-log_mustnot dd if=/dev/urandom of=$TESTDIR/$TESTFILE2 count=1 bs=128k
+log_mustnot randomdd of=$TESTDIR/$TESTFILE2 count=1 bs=128k
 
 log_pass "Setting devices=off on file system and testing it pass."

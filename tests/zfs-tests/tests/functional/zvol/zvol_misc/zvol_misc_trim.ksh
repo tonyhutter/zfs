@@ -82,7 +82,7 @@ function do_test {
 	block_device_wait $zvolpath
 
 	# Create a data file
-	log_must dd if=/dev/urandom of="$datafile1" bs=1M count=5
+	log_must randomdd of="$datafile1" bs=1M count=5
 	
 	# Write to zvol
 	log_must dd if=$datafile1 of=$zvolpath conv=fsync

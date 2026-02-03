@@ -90,7 +90,7 @@ function do_test {
 	fi
 
 	# Create a data file
-	log_must dd if=/dev/urandom of="$datafile1" bs=1M count=5
+	log_must randomdd of="$datafile1" bs=1M count=5
 
 	# Write the data to our zvol using FUA
 	log_must dd if=$datafile1 of=$zvolpath oflag=dsync,direct bs=1M count=5

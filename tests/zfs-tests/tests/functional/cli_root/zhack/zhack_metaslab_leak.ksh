@@ -42,7 +42,7 @@ typeset tmp=$(mktemp)
 
 log_must zpool create $TESTPOOL $DISKS
 for i in `seq 1 16`; do
-	log_must dd if=/dev/urandom of=/$TESTPOOL/f$i bs=1M count=16
+	log_must randomdd of=/$TESTPOOL/f$i bs=1M count=16
 	log_must zpool sync $TESTPOOL
 done
 for i in `seq 2 2 16`; do

@@ -54,7 +54,7 @@ log_onexit redacted_cleanup $sendfs $recvfs
 # the delete queue when we rm it.
 #
 exec 5>>$clone_mnt/f1
-log_must dd if=/dev/urandom of=$clone_mnt/f1 bs=512 count=1 conv=notrunc
+log_must randomdd of=$clone_mnt/f1 bs=512 count=1 conv=notrunc
 log_must rm $clone_mnt/f1
 log_must zfs snapshot $clone@snap1
 # Close file descriptor 5

@@ -76,7 +76,7 @@ log_must zfs destroy -R $recvfs
 if is_illumos; then
 	log_must mkholes -d $((3 * M)):$((2 * M)) $clone_mnt/f2
 else
-	log_must dd if=/dev/urandom of=$clone_mnt/f2 bs=1M count=2 seek=3 \
+	log_must randomdd of=$clone_mnt/f2 bs=1M count=2 seek=3 \
 	    conv=notrunc
 fi
 log_must zfs snapshot $clone@snap1

@@ -69,7 +69,7 @@ for ((i=0; i < ${#prop_values[*]}; i++)) ; do
 	touch $file
 	xattr_size=${xattr_sizes[$i]}
 	xattr_name=user.foo
-	xattr_val=$(dd if=/dev/urandom bs=1 count=$xattr_size |
+	xattr_val=$(randomdd bs=1 count=$xattr_size |
 	    openssl enc -a -A)
 	log_must setfattr -n $xattr_name -v 0s$xattr_val $file
 	inodes[$i]=$(ls -li $file | awk '{print $1}')

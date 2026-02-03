@@ -50,12 +50,12 @@ typeset recv_vol_file="/dev/zvol/$recvvol"
 log_onexit redacted_cleanup $sendfs $recvfs $recvvol
 
 log_must rm $clone_mnt/empty $clone_mnt/contents1
-log_must dd if=/dev/urandom of=$clone_mnt/contents2 bs=512 count=1 conv=notrunc
+log_must randomdd of=$clone_mnt/contents2 bs=512 count=1 conv=notrunc
 log_must rm $clone_mnt/dir1/contents1
 log_must rm -rf $clone_mnt/dir1/dir2
-log_must dd if=/dev/urandom of=$clone_mnt/dir1/contents2 bs=512 count=1 \
+log_must randomdd of=$clone_mnt/dir1/contents2 bs=512 count=1 \
     conv=notrunc
-log_must dd if=/dev/urandom of=$clone_mnt/dir1/empty bs=512 count=1
+log_must randomdd of=$clone_mnt/dir1/empty bs=512 count=1
 log_must zfs snapshot $clone@snap1
 
 log_must zfs redact $sendfs@snap book1 $clone@snap
@@ -94,7 +94,7 @@ if ! is_disk_device $recv_vol_file; then
 fi
 is_disk_device $recv_vol_file || log_fail "Volume device file should exist."
 
-log_must dd if=/dev/urandom of=$send_mnt/dir1/contents1 bs=512 count=2
+log_must randomdd of=$send_mnt/dir1/contents1 bs=512 count=2
 log_must rm $send_mnt/dir1/dir2/empty
 log_must zfs snapshot $sendfs@snap2
 log_must eval "zfs send -i $sendfs#book1 $sendfs@snap2 >$stream"

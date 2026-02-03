@@ -64,7 +64,7 @@ log_mustnot eval "zdb -dddd $TESTPOOL 1 | grep -q DDT-sha256"
 
 # create a file. this is four full blocks, so will produce four entries in the
 # dedup table
-log_must dd if=/dev/urandom of=/$TESTPOOL/file1 bs=128k count=4
+log_must randomdd of=/$TESTPOOL/file1 bs=128k count=4
 log_must zpool sync
 
 # feature should now be active

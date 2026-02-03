@@ -42,12 +42,12 @@ log_must zfs set recordsize=512 $TESTPOOL/$TESTFS
 # Create a large file so that we know some of the blocks will be on the
 # removed device, and hence eligible for remapping.
 #
-log_must dd if=/dev/urandom of=$TESTDIR/file bs=1024k count=10
+log_must randomdd of=$TESTDIR/file bs=1024k count=10
 
 #
 # Create a file in the other filesystem, which will not be remapped.
 #
-log_must dd if=/dev/urandom of=$TESTDIR1/file bs=1024k count=10
+log_must randomdd of=$TESTDIR1/file bs=1024k count=10
 
 #
 # Randomly rewrite some of blocks in the file so that there will be holes and

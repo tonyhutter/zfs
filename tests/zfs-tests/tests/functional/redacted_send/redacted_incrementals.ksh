@@ -112,11 +112,11 @@ log_must dd if=/dev/zero of=$mntpnt/f2 bs=128k count=16 conv=notrunc
 log_must zfs snapshot $POOL/hole1@snap
 log_must zfs clone $sendfs@snap1 $POOL/write1
 mntpnt=$(get_prop mountpoint $POOL/write1)
-log_must dd if=/dev/urandom of=$mntpnt/f2 bs=128k count=16 conv=notrunc
+log_must randomdd of=$mntpnt/f2 bs=128k count=16 conv=notrunc
 log_must zfs snapshot $POOL/write1@snap
 log_must zfs clone $POOL/int@snap $POOL/write2
 mntpnt=$(get_prop mountpoint $POOL/write2)
-log_must dd if=/dev/urandom of=$mntpnt/f2 bs=128k count=16 conv=notrunc
+log_must randomdd of=$mntpnt/f2 bs=128k count=16 conv=notrunc
 log_must zfs snapshot $POOL/write2@snap
 
 # Setup a redacted send using a redaction list at varying depth.

@@ -44,7 +44,7 @@ typeset recv_mnt="/$POOL2/$ds_name"
 
 log_onexit redacted_cleanup $sendfs $recvfs
 
-log_must dd if=/dev/urandom of=$clone_mnt/f1 bs=32k count=3 seek=8 conv=notrunc
+log_must randomdd of=$clone_mnt/f1 bs=32k count=3 seek=8 conv=notrunc
 log_must zfs snapshot $clone@snap1
 
 log_must zfs redact $sendfs@snap book1 $clone@snap1

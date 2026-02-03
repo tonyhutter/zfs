@@ -64,7 +64,7 @@ log_must zpool online -e $TESTPOOL $DISK0
 #
 # Fill up the whole vdev.
 #
-dd if=/dev/urandom of=$TESTDIR/$TESTFILE0 bs=8M
+randomdd of=$TESTDIR/$TESTFILE0 bs=8M
 
 #
 # Add another vdev and remove the first vdev creating indirect

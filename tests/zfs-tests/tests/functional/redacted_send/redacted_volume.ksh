@@ -54,7 +54,7 @@ if ! is_disk_device $send_file; then
 		is_disk_device $send_file && break
 	done
 fi
-log_must dd if=/dev/urandom of=$send_file bs=8k count=64
+log_must randomdd of=$send_file bs=8k count=64
 log_must zfs snapshot $sendvol@snap
 log_must zfs clone $sendvol@snap $clone
 log_must zfs snapshot $clone@snap
@@ -81,7 +81,7 @@ log_must dd if=$recv_file of=$tmpdir/recv.dd bs=8k count=64
 log_must diff $tmpdir/send.dd $tmpdir/recv.dd
 log_must zfs destroy -R $recvvol
 
-log_must dd if=/dev/urandom of=$clone_file bs=8k count=32
+log_must randomdd of=$clone_file bs=8k count=32
 log_must zfs snapshot $clone@snap1
 log_must zfs redact $sendvol@snap book2 $clone@snap1
 log_must eval "zfs send --redact book2 $sendvol@snap >$stream"

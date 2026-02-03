@@ -84,7 +84,7 @@ log_must mkdir -p $recvmnt
 log_must mount $zdev $mntpnt
 
 for ((i = 1; i <= $snap_count; i++)); do
-	log_must dd if=/dev/urandom of=$mntpnt/file bs=1M count=1
+	log_must randomdd of=$mntpnt/file bs=1M count=1
 	for ((j = 0; j < 10; j++)); do
 		log_must cp $mntpnt/file $mntpnt/file$j
 	done

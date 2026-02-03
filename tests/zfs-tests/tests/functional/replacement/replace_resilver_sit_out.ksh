@@ -163,7 +163,7 @@ for type in "raidz2" "raidz3" "draid2"; do
 	    $TESTPOOL1/$TESTFS1
 	log_must zfs set mountpoint=$TESTDIR1 $TESTPOOL1/$TESTFS1
 
-	log_must dd if=/dev/urandom of=/$TESTDIR1/bigfile bs=1M count=$count
+	log_must randomdd of=/$TESTDIR1/bigfile bs=1M count=$count
 
 	# Make one disk 100ms slower to trigger a sit out
 	log_must zinject -d $slow_disk -D100:1 -T read $TESTPOOL1

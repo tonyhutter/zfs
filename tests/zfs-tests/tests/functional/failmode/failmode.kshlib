@@ -28,10 +28,10 @@
 . $STF_SUITE/include/libtest.shlib
 
 typeset -A failmode_sync_helper_cmd=(
-    ["fsync"]='dd if=/dev/urandom of=DATAFILE bs=128k count=1 conv=fsync'
+    ["fsync"]='randomdd of=DATAFILE bs=128k count=1 conv=fsync'
     ["msync"]='mmap_write_sync DATAFILE'
-    ["osync"]='dd if=/dev/urandom of=DATAFILE bs=128k count=1 oflag=sync'
-    ["syncalways"]='dd if=/dev/urandom of=DATAFILE bs=128k count=1'
+    ["osync"]='randomdd of=DATAFILE bs=128k count=1 oflag=sync'
+    ["syncalways"]='randomdd of=DATAFILE bs=128k count=1'
 )
 
 typeset -A failmode_sync_helper_dsopts=(

@@ -104,7 +104,7 @@ log_must zfs create $TESTPOOL/$TESTFS1
 
 # create multiple snapshot for the dataset with data
 for block_size in 64 128 256; do
-	log_must dd if=/dev/urandom of=/$TESTPOOL/$TESTFS1/file$block_size \
+	log_must randomdd of=/$TESTPOOL/$TESTFS1/file$block_size \
 	    bs=1M count=$block_size
 	log_must zfs snapshot $TESTPOOL/$TESTFS1@snap$block_size
 	log_must zfs bookmark $TESTPOOL/$TESTFS1@snap$block_size \
@@ -177,7 +177,7 @@ for ds in $datasets; do
         datasetexists $ds || log_fail "Create $ds dataset fail."
 done
 for ds in $datasets; do
-	log_must dd if=/dev/urandom of=/$ds/file64 \
+	log_must randomdd of=/$ds/file64 \
 	    bs=1M count=64
 done
 

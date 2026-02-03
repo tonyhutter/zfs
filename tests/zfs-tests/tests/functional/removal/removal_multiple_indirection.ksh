@@ -67,7 +67,7 @@ log_onexit cleanup
 # set REMOVE_MAX_SEGMENT to 32k
 log_must set_tunable32 REMOVE_MAX_SEGMENT 32768
 
-log_must dd if=/dev/urandom of=$TESTDIR/$TESTFILE0 bs=128k count=1
+log_must randomdd of=$TESTDIR/$TESTFILE0 bs=128k count=1
 FILE_CONTENTS=$(<$TESTDIR/$TESTFILE0)
 log_must [ "x$(<$TESTDIR/$TESTFILE0)" = "x$FILE_CONTENTS" ]
 
