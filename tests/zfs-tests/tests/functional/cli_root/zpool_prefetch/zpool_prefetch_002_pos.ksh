@@ -62,7 +62,7 @@ MNTPOINT=$(get_prop mountpoint $DATASET)
 log_note "Generating cloned blocks for BRT ..."
 
 # Create source file
-log_must dd if=/dev/urandom of=$MNTPOINT/source bs=1M count=100
+log_must dd if=$RANDPIPE of=$MNTPOINT/source bs=1M count=100
 
 # Create clones using clonefile
 typeset -i i=0

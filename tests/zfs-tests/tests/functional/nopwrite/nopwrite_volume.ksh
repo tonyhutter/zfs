@@ -46,7 +46,7 @@ log_assert "nopwrite works on volumes"
 
 log_must zfs set compress=on $origin
 log_must zfs set checksum=sha256 $origin
-dd if=/dev/urandom of=$vol bs=16384 count=2048 conv=notrunc >/dev/null \
+dd if=$RANDPIPE of=$vol bs=16384 count=2048 conv=notrunc >/dev/null \
     2>&1 || log_fail "dd into $origin failed."
 zfs snapshot $origin@a || log_fail "zfs snap failed"
 log_must zfs clone $origin@a $clone

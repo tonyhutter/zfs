@@ -55,7 +55,7 @@ DEVICE2="$TEST_BASE_DIR/device-2"
 DEVICE3="$TEST_BASE_DIR/device-3"
 DEVICE4="$TEST_BASE_DIR/device-4"
 
-log_must dd if=/dev/urandom of=$PATTERN_FILE bs=1048576 count=4
+log_must dd if=$RANDPIPE of=$PATTERN_FILE bs=1048576 count=4
 
 log_must truncate -s $SPA_MINDEVSIZE $DEVICE1 $DEVICE2 $DEVICE3 $DEVICE4
 

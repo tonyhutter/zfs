@@ -49,7 +49,7 @@ log_must zfs create -o recordsize=128k $TESTPOOL/$TESTFS
 
 # start writing to a file in the background. these args to dd will make it
 # keep writing until it fills the pool, but we will kill it before that happens.
-dd if=/dev/urandom of=/$TESTPOOL/$TESTFS/file bs=128k &
+dd if=$RANDPIPE of=/$TESTPOOL/$TESTFS/file bs=128k &
 dd_pid=$!
 
 # give it a moment for the write throttle to start pushing back

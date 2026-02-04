@@ -307,6 +307,6 @@ function write_mountpoint_dir
 		dir=$TESTDIR1
 		log_must ismounted $dir $NEWFS_DEFAULT_FS
 	fi
-	dd if=/dev/urandom of=$dir/$TESTFILE1 &
+	dd if=$RANDPIPE of=$dir/$TESTFILE1 &
 	log_must sleep 3
 }

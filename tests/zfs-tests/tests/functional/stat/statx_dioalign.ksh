@@ -89,7 +89,7 @@ typeset -i PAGE_SIZE=$(getconf PAGE_SIZE)
 # Set recordsize to 128K, and make a 64K file (so only one block) for the
 # sizing tests below.
 log_must zfs set recordsize=128K $TESTDS
-log_must dd if=/dev/urandom of=$TESTFILE bs=64k count=1
+log_must dd if=$RANDPIPE of=$TESTFILE bs=64k count=1
 log_must zpool sync
 
 # when DIO is disabled via tunable, statx will not return the dioalign result
@@ -141,7 +141,7 @@ done
 # Now we extend the file into its second block. This effectively locks in its
 # block size, which will always be returned regardless of recordsize changes.
 log_must zfs set recordsize=128K $TESTDS
-log_must dd if=/dev/urandom of=$TESTFILE bs=192K count=1
+log_must dd if=$RANDPIPE of=$TESTFILE bs=192K count=1
 log_must zpool sync
 
 # Confirm that no matter how we change the recordsize, the alignment remains at
@@ -167,14 +167,14 @@ log_must rm -f $TESTFILE
 log_must touch $TESTFILE
 log_must zpool sync
 assert_dioalign $TESTFILE $PAGE_SIZE 16384
-log_must dd if=/dev/urandom of=$TESTFILE bs=16384 count=16 oflag=direct
+log_must dd if=$RANDPIPE of=$TESTFILE bs=16384 count=16 oflag=direct
 
 # same again, but writing with incorrect alignment, which should fail.
 log_must rm -f $TESTFILE
 log_must touch $TESTFILE
 log_must zpool sync
 assert_dioalign $TESTFILE $PAGE_SIZE 16384
-log_mustnot dd if=/dev/urandom of=$TESTFILE bs=1024 count=256 oflag=direct
+log_mustnot dd if=$RANDPIPE of=$TESTFILE bs=1024 count=256 oflag=direct
 
 # same again, but without strict, which should succeed.
 log_must set_tunable32 DIO_STRICT 0
@@ -182,6 +182,6 @@ log_must rm -f $TESTFILE
 log_must touch $TESTFILE
 log_must zpool sync
 assert_dioalign $TESTFILE $PAGE_SIZE 16384
-log_must dd if=/dev/urandom of=$TESTFILE bs=1024 count=256 oflag=direct
+log_must dd if=$RANDPIPE of=$TESTFILE bs=1024 count=256 oflag=direct
 
 log_pass $CLAIM

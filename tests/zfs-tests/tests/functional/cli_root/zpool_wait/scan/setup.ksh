@@ -28,6 +28,6 @@ verify_disk_count $DISKS 3
 # share the same setup.
 #
 log_must zpool create -f $TESTPOOL $DISK1
-log_must dd if=/dev/urandom of="/$TESTPOOL/testfile" bs=1k count=256k
+log_must dd if=$RANDPIPE of="/$TESTPOOL/testfile" bs=1k count=256k
 
 log_pass

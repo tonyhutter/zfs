@@ -40,20 +40,20 @@ log_onexit redacted_cleanup $POOL/512 $POOL/1m $POOL2/512 $POOL2/1m
 # Set up the datasets we'll send and redact from.
 log_must zfs create -o recsize=512 $POOL/512
 mntpnt=$(get_prop mountpoint $POOL/512)
-log_must dd if=/dev/urandom of=$mntpnt/f1 bs=1024k count=2
+log_must dd if=$RANDPIPE of=$mntpnt/f1 bs=1024k count=2
 log_must zfs snapshot $POOL/512@snap
 log_must zfs clone -o recsize=1m $POOL/512@snap $POOL/1mclone
 mntpnt=$(get_prop mountpoint $POOL/1mclone)
-log_must dd if=/dev/urandom of=$mntpnt/f1 bs=512 count=32 conv=notrunc
+log_must dd if=$RANDPIPE of=$mntpnt/f1 bs=512 count=32 conv=notrunc
 log_must zfs snapshot $POOL/1mclone@snap
 
 log_must zfs create -o recsize=1m $POOL/1m
 mntpnt=$(get_prop mountpoint $POOL/1m)
-log_must dd if=/dev/urandom of=$mntpnt/f1 bs=1024k count=2
+log_must dd if=$RANDPIPE of=$mntpnt/f1 bs=1024k count=2
 log_must zfs snapshot $POOL/1m@snap
 log_must zfs clone -o recsize=512 $POOL/1m@snap $POOL/512clone
 mntpnt=$(get_prop mountpoint $POOL/512clone)
-log_must dd if=/dev/urandom of=$mntpnt/f1 bs=512 count=32 conv=notrunc
+log_must dd if=$RANDPIPE of=$mntpnt/f1 bs=512 count=32 conv=notrunc
 log_must zfs snapshot $POOL/512clone@snap
 
 # Create datasets that allow received datasets to inherit recordsize.

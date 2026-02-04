@@ -93,7 +93,7 @@ log_must eval "echo $passphrase > /$TESTPOOL/pwd"
 log_must zfs create -o primarycache=none \
     -o atime=off -o compression=lz4 $TESTPOOL/$TESTFS1
 
-log_must dd if=/dev/urandom of=$file bs=1024 count=1024 oflag=sync
+log_must dd if=$RANDPIPE of=$file bs=1024 count=1024 oflag=sync
 log_must eval "echo 'aaaaaaaa' >> "$file
 typeset checksum=$(xxh128digest $file)
 
@@ -102,7 +102,7 @@ log_must zfs snapshot $TESTPOOL/$TESTFS1@snap1
 # create full send file
 log_must eval "zfs send $TESTPOOL/$TESTFS1@snap1 > $backup"
 
-log_must dd if=/dev/urandom of=$file"1" bs=1024 count=1024 oflag=sync
+log_must dd if=$RANDPIPE of=$file"1" bs=1024 count=1024 oflag=sync
 log_must eval "echo 'bbbbbbbb' >> "$file"1"
 log_must zfs snapshot $TESTPOOL/$TESTFS1@snap2
 # create incremental send file

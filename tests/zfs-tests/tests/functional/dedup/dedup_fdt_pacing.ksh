@@ -73,7 +73,7 @@ log_must set_tunable32 DEDUP_LOG_FLUSH_ENTRIES_MAX 1
 
 # Create a file. This is 256 full blocks, so will produce 256 entries in the
 # dedup log.
-log_must dd if=/dev/urandom of=/$TESTPOOL/fs/file1 bs=128k count=8
+log_must dd if=$RANDPIPE of=/$TESTPOOL/fs/file1 bs=128k count=8
 sync_pool
 
 # Verify there are at least 240 entries in the dedup log.

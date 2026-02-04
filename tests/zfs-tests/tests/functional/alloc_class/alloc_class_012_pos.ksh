@@ -83,7 +83,7 @@ function check_removal
 	log_must zfs create -o special_small_blocks=32K -o recordsize=32K \
 	    $TESTPOOL/$TESTFS
 	for i in 1 2 3 4; do
-		log_must dd if=/dev/urandom of=/$TESTPOOL/$TESTFS/testfile.$i \
+		log_must dd if=$RANDPIPE of=/$TESTPOOL/$TESTFS/testfile.$i \
 		    bs=1M count=$blocks
 		((blocks = blocks + 25))
 	done

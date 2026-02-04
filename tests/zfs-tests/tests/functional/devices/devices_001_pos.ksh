@@ -60,7 +60,7 @@ log_must zfs set devices=on $TESTPOOL/$TESTFS
 # Verify it can be opened, written, and read.
 #
 create_dev_file b $TESTDIR/$TESTFILE1 $ZVOL_DEVDIR/$TESTPOOL/$TESTVOL
-log_must dd if=/dev/urandom of=$TESTDIR/$TESTFILE1.out1 count=1 bs=128k
+log_must dd if=$RANDPIPE of=$TESTDIR/$TESTFILE1.out1 count=1 bs=128k
 log_must dd if=$TESTDIR/$TESTFILE1.out1 of=$TESTDIR/$TESTFILE1 count=1 bs=128k
 log_must dd if=$TESTDIR/$TESTFILE1 of=$TESTDIR/$TESTFILE1.out2 count=1 bs=128k
 log_must cmp $TESTDIR/$TESTFILE1.out1 $TESTDIR/$TESTFILE1.out2
@@ -68,6 +68,6 @@ log_must cmp $TESTDIR/$TESTFILE1.out1 $TESTDIR/$TESTFILE1.out2
 # Create character device file backed by /dev/null
 # Verify it can be opened and written.
 create_dev_file c $TESTDIR/$TESTFILE2
-log_must dd if=/dev/urandom of=$TESTDIR/$TESTFILE2 count=1 bs=128k
+log_must dd if=$RANDPIPE of=$TESTDIR/$TESTFILE2 count=1 bs=128k
 
 log_pass "Setting devices=on on file system and testing it pass."

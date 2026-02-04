@@ -90,7 +90,7 @@ function multiple_slow_vdevs_test
 	log_must zfs set primarycache=none $TESTPOOL
 	log_must zfs set recordsize=4K $TESTPOOL
 
-	log_must dd if=/dev/urandom of=$FILEPATH bs=1M count=4
+	log_must dd if=$RANDPIPE of=$FILEPATH bs=1M count=4
 	zpool sync
 
 	#

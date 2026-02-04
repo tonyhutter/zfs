@@ -69,7 +69,7 @@ done
 
 log_must zfs destroy -R $recvfs
 for recsize in 512 2048 8192; do
-	log_must dd if=/dev/urandom of=$clone_mnt/$recsize bs=$recsize count=1
+	log_must dd if=$RANDPIPE of=$clone_mnt/$recsize bs=$recsize count=1
 done
 log_must zfs snapshot $clone@snap1
 log_must zfs redact $sendfs@snap book2 $clone@snap1

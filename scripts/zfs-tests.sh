@@ -45,6 +45,8 @@ FILESIZE="4G"
 DEFAULT_RUNFILES="common.run,$(uname | tr '[:upper:]' '[:lower:]').run"
 RUNFILES=${RUNFILES:-$DEFAULT_RUNFILES}
 FILEDIR=${FILEDIR:-/var/tmp}
+RANDPIPE="$FILEDIR/zts-randpipe"
+RANDPIPE_PID=""
 DISKS=${DISKS:-""}
 SINGLETEST=""
 SINGLETESTUSER="root"
@@ -138,6 +140,15 @@ cleanup() {
 	if [ "$STF_PATH_REMOVE" = "yes" ] && [ -d "$STF_PATH" ]; then
 		rm -Rf "$STF_PATH"
 	fi
+
+	if [ -p "$RANDPIPE" ] ; then
+		# RANDPIPE is a named pipe
+
+		if [ -n "$RANDPIPE_PID" ] ; then
+			kill $RANDPIPE_PID
+		fi
+		rm "$RANDPIPE"
+	fi
 }
 trap cleanup EXIT
 
@@ -154,7 +165,7 @@ cleanup_all() {
 	else
 		TEST_LOOPBACKS=$("${LOSETUP}" -a | awk -F: '/file-vdev/ {print $1}')
 	fi
-	TEST_FILES=$(ls "${FILEDIR}"/file-vdev* 2>/dev/null)
+	TEST_FILES=$(ls "${FILEDIR}"/file-vdev* "$RANDPIPE" 2>/dev/null)
 
 	msg
 	msg "--- Cleanup ---"
@@ -730,6 +741,32 @@ fi
 #
 export TMPDIR="$FILEDIR"
 
+# Optimization: Use psudorandom output from file_write as a named pipe
+# rather than the slower /dev/urandom.
+set -x
+if [ "$UNAME" = "Linux" ] && which pipesz &> /dev/null ; then
+	# There's a number of places in ZTS where we would normally use
+	# 'dd if=/dev/urandom ...'.  However, it turns out /dev/urandom is really slow,
+	# with speeds of only 40MB/s seen on some VMs.  To get around this, read the
+	# extremely fast psudorandom data from 'file_write' as a named pipe instead.
+	# This allows you to do 'dd if=$RANDPIPE ...'.
+	if [ -e $RANDPIPE ] ; then
+		echo "$RANDPIPE already exists.  Run with '-x' flag to remove."
+		exit 1
+	fi
+	mkfifo "$RANDPIPE"
+	$BIN_DIR/file_write -o create -f "$RANDPIPE" -b 4096 -c 99999999 -d R &
+	export RANDPIPE_PID=$!
+
+	# Set our pipe buffer to 16MB.  This allows 'dd bs=16M ...' to actually
+	# return 16M.  16M is the largest ZFS record size, and the largest dd
+	# 'bs' value we use in ZTS.
+	sudo pipesz -s16M -f $RANDPIPE &
+else
+	# FreeBSD or any distro that doesn't include 'pipesz'
+	RANDPIPE=/dev/urandom
+fi
+
 msg
 msg "--- Configuration ---"
 msg "Runfiles:        $RUNFILES"
@@ -758,6 +795,7 @@ export FILEDIR
 export KEEP
 export __ZFS_POOL_EXCLUDE
 export TESTFAIL_CALLBACKS
+export RANDPIPE
 
 mktemp_file() {
 	if [ "$UNAME" = "FreeBSD" ]; then

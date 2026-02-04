@@ -45,7 +45,7 @@ log_assert "nopwrite works on a dataset that becomes a clone via promotion."
 
 log_must zfs set compress=on $origin
 log_must zfs set checksum=sha256 $origin
-dd if=/dev/urandom of=$TESTDIR/file bs=1024k count=$MEGS conv=notrunc \
+dd if=$RANDPIPE of=$TESTDIR/file bs=1024k count=$MEGS conv=notrunc \
     >/dev/null 2>&1 || log_fail "dd into $TESTDIR/file failed."
 zfs snapshot $origin@a || log_fail "zfs snap failed"
 log_must zfs clone $origin@a $TESTPOOL/clone

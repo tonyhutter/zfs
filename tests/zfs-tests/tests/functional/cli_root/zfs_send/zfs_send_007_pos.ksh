@@ -58,7 +58,7 @@ function test_pool
 	POOL=$1
 	log_must zfs create -o recordsize=512 $POOL/fs
 	mntpnt=$(get_prop mountpoint "$POOL/fs")
-	log_must eval "dd if=/dev/urandom of=${mntpnt}/file bs=512 count=1 2>/dev/null"
+	log_must eval "dd if=$RANDPIPE of=${mntpnt}/file bs=512 count=1 2>/dev/null"
 	object=$(ls -i $mntpnt | awk '{print $1}')
 	log_must zfs snapshot $POOL/fs@a
 	while true; do
@@ -70,7 +70,7 @@ function test_pool
 		object=$(ls -i $mntpnt | sort -n | awk -v object=$object \
 		    '{if ($1 <= object) {exit 1}} END {print $1}') || break
 	done
-	dd if=/dev/urandom of=${mntpnt}/$FILE bs=512 count=1 seek=1 2>/dev/null
+	dd if=$RANDPIPE of=${mntpnt}/$FILE bs=512 count=1 seek=1 2>/dev/null
 
 	log_must zfs snapshot $POOL/fs@b
 

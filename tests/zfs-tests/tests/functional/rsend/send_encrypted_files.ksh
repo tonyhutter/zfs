@@ -70,7 +70,7 @@ log_must zfs create -o encryption=on -o keyformat=passphrase \
 log_must touch /$TESTPOOL/$TESTFS2/empty
 log_must mkfile 512 /$TESTPOOL/$TESTFS2/small
 log_must mkfile 32M /$TESTPOOL/$TESTFS2/full
-log_must dd if=/dev/urandom of=/$TESTPOOL/$TESTFS2/sparse \
+log_must dd if=$RANDPIPE of=/$TESTPOOL/$TESTFS2/sparse \
 	bs=512 count=1 seek=1048576 >/dev/null 2>&1
 
 log_must mkdir -p /$TESTPOOL/$TESTFS2/dir

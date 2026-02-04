@@ -79,13 +79,13 @@ log_must set_tunable64 SEND_HOLES_WITHOUT_BIRTH_TIME 0
 log_must zfs create -o recordsize=4k $sendfs
 
 log_must truncate -s 1G /$sendfs/file1
-log_must dd if=/dev/urandom of=/$sendfs/file1 bs=4k count=11264 seek=1152
+log_must dd if=$RANDPIPE of=/$sendfs/file1 bs=4k count=11264 seek=1152
 log_must zfs snapshot $sendfs@snap1
 
 log_must truncate -s 4M /$sendfs/file1
-log_must dd if=/dev/urandom of=/$sendfs/file1 bs=4k count=152 seek=384 \
+log_must dd if=$RANDPIPE of=/$sendfs/file1 bs=4k count=152 seek=384 \
     conv=notrunc
-log_must dd if=/dev/urandom of=/$sendfs/file1 bs=4k count=10 seek=1408 \
+log_must dd if=$RANDPIPE of=/$sendfs/file1 bs=4k count=10 seek=1408 \
     conv=notrunc
 log_must zfs snapshot $sendfs@snap2
 
@@ -96,11 +96,11 @@ log_must cleanup_pool $recvpool
 # Incremental send appending a hole and data.
 log_must zfs create -o recordsize=512 $sendfs
 
-log_must dd if=/dev/urandom of=/$sendfs/file1 bs=128k count=1 seek=1
+log_must dd if=$RANDPIPE of=/$sendfs/file1 bs=128k count=1 seek=1
 log_must zfs snapshot $sendfs@snap1
 
-log_must dd if=/dev/urandom of=/$sendfs/file1 bs=128k count=1
-log_must dd if=/dev/urandom of=/$sendfs/file1 bs=128k count=1 seek=3
+log_must dd if=$RANDPIPE of=/$sendfs/file1 bs=128k count=1
+log_must dd if=$RANDPIPE of=/$sendfs/file1 bs=128k count=1 seek=3
 log_must zfs snapshot $sendfs@snap2
 
 send_and_verify
@@ -111,11 +111,11 @@ log_must cleanup_pool $recvpool
 log_must zfs create -o recordsize=512 $sendfs
 
 log_must truncate -s 300M /$sendfs/file1
-log_must dd if=/dev/urandom of=/$sendfs/file1 bs=512 count=128k conv=notrunc
+log_must dd if=$RANDPIPE of=/$sendfs/file1 bs=512 count=128k conv=notrunc
 log_must zfs snapshot $sendfs@snap1
 
 log_must truncate -s 10M /$sendfs/file1
-log_must dd if=/dev/urandom of=/$sendfs/file1 bs=512 count=1 seek=96k \
+log_must dd if=$RANDPIPE of=/$sendfs/file1 bs=512 count=1 seek=96k \
     conv=notrunc
 log_must zfs snapshot $sendfs@snap2
 

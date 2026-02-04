@@ -62,7 +62,7 @@ log_must create_pool $TESTPOOL $DISKS
 log_must zfs create -o dedup=sha256 -o recordsize=512 $TESTPOOL/$TESTFS
 typeset mountpoint=$(get_prop mountpoint $TESTPOOL/$TESTFS)
 
-log_must dd if=/dev/urandom of=$mountpoint/file bs=512k count=1
+log_must dd if=$RANDPIPE of=$mountpoint/file bs=512k count=1
 sync_pool $TESTPOOL
 
 zap_obj=$(zdb -DDD $TESTPOOL | grep "DDT-sha256-zap-unique" | sed -n 's/.*object=//p')

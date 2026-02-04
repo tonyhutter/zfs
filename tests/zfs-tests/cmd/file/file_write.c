@@ -124,11 +124,6 @@ main(int argc, char **argv)
 	/*
 	 * Validate Parameters
 	 */
-	if (!filename) {
-		(void) printf("Filename not specified (-f <file>)\n");
-		err++;
-	}
-
 	if (!operation) {
 		(void) printf("Operation not specified (-o <operation>).\n");
 		err++;
@@ -195,16 +190,23 @@ main(int argc, char **argv)
 	 * Given an operation (create/overwrite/append), open the file
 	 * accordingly and perform a write of the appropriate type.
 	 */
-	if ((bigfd = open(filename, oflag, 0666)) == -1) {
-		(void) printf("open %s: failed [%s]%d. Aborting!\n", filename,
-		    strerror(errno), errno);
-		exit(errno);
+	if (filename != NULL) {
+		if ((bigfd = open(filename, oflag, 0666)) == -1) {
+			(void) printf("open %s: failed [%s]%d. Aborting!\n",
+			    filename, strerror(errno), errno);
+			exit(errno);
+		}
+	} else {
+		bigfd = STDOUT_FILENO;
 	}
-	noffset = lseek64(bigfd, offset, SEEK_SET);
-	if (noffset != offset) {
-		(void) printf("llseek %s (%lld/%lld) failed [%s]%d.Aborting!\n",
-		    filename, offset, noffset, strerror(errno), errno);
-		exit(errno);
+	if (offset != 0) {
+		noffset = lseek64(bigfd, offset, SEEK_SET);
+		if (noffset != offset) {
+			(void) printf("llseek %s (%lld/%lld) failed [%s]%d. "
+			    "Aborting!\n",
+			    filename, offset, noffset, strerror(errno), errno);
+			exit(errno);
+		}
 	}
 
 	if (verbose) {

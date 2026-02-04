@@ -59,7 +59,7 @@ do
 		#
 		# Create file in pool to trigger writing in slog devices
 		#
-		log_must dd if=/dev/urandom of=$mntpnt/testfile.$$ count=100
+		log_must dd if=$RANDPIPE of=$mntpnt/testfile.$$ count=100
 
 		ldev=$(random_get $LDEV)
 		log_must mkfile $MINVDEVSIZE $ldev

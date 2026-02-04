@@ -126,7 +126,7 @@ set -A DATAPATHS /$TESTPOOL1/fs{0..3}/dat.0
 log_note "Writing data files"
 for path in ${DATAPATHS[@]}
 do
-	dd if=/dev/urandom of=$path bs=1M count=16 > /dev/null 2>&1 &
+	dd if=$RANDPIPE of=$path bs=1M count=16 > /dev/null 2>&1 &
 done
 wait
 

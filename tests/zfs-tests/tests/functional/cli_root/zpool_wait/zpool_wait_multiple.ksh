@@ -47,7 +47,7 @@ typeset pid default_chunk_sz
 log_onexit cleanup
 
 log_must zpool create -f $TESTPOOL $DISK1
-log_must dd if=/dev/urandom of="/$TESTPOOL/testfile" bs=64k count=1k
+log_must dd if=$RANDPIPE of="/$TESTPOOL/testfile" bs=64k count=1k
 
 default_chunk_sz=$(get_tunable INITIALIZE_CHUNK_SIZE)
 log_must set_tunable64 INITIALIZE_CHUNK_SIZE 512

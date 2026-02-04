@@ -3018,7 +3018,7 @@ function write_compressible
 
 			# Write every third block to get 66% compression.
 			for (( j = 0; j < $blocks; j += 3 )); do
-				dd if=/dev/urandom of=$dir/$fname.$i \
+				dd if=$RANDPIPE of=$dir/$fname.$i \
 				    seek=$j bs=$bs_bytes count=1 \
 				    conv=notrunc >/dev/null 2>&1
 			done

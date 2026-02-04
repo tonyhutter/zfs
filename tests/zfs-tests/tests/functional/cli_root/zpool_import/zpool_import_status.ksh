@@ -75,9 +75,9 @@ log_must dd if=/dev/zero of=/$TESTPOOL1/fs/sync conv=fsync bs=1 count=1
 #
 # Overwrite some blocks to populate spacemap logs
 #
-log_must dd if=/dev/urandom of=/$TESTPOOL1/fs/00 bs=1M count=200
+log_must dd if=$RANDPIPE of=/$TESTPOOL1/fs/00 bs=1M count=200
 sync_all_pools
-log_must dd if=/dev/urandom of=/$TESTPOOL1/fs/00 bs=1M count=200
+log_must dd if=$RANDPIPE of=/$TESTPOOL1/fs/00 bs=1M count=200
 sync_all_pools
 
 #

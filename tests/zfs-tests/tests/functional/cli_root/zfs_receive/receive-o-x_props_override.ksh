@@ -237,7 +237,7 @@ log_must eval "zfs set '$userprop:orig'='$userval' $dest"
 log_must eval "zfs set '$userprop:origsub'='$userval' $destsub"
 # Create a truncated incremental replication stream
 mntpnt=$(get_prop mountpoint $orig)
-log_must eval "dd if=/dev/urandom of=$mntpnt/file bs=1024k count=10"
+log_must eval "dd if=$RANDPIPE of=$mntpnt/file bs=1024k count=10"
 log_must zfs snapshot -r $orig@snap2
 log_must zfs snapshot -r $orig@snap3
 log_must eval "zfs send -R -I $orig@snap1 $orig@snap3 > $streamfile_incr"

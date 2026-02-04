@@ -72,7 +72,7 @@ CPUS=$(get_num_cpus)
 for SIZE in {70..100} ; do
 	for OFF in {70..100} ; do
 		for i in {1..$CPUS} ; do
-			dd if=/dev/urandom of=/$TESTPOOL/file$i-bs$SIZE-off$OFF \
+			dd if=$RANDPIPE of=/$TESTPOOL/file$i-bs$SIZE-off$OFF \
 			    seek=$OFF bs=$SIZE count=1 &>/dev/null &
 		done
 		wait

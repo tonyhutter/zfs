@@ -57,9 +57,9 @@ function bclone_corner_cases_init
     export ORIG2="$srcdir/orig2"
 
     # Create source files.
-    log_must dd if=/dev/urandom of="$ORIG0" bs=$RECORDSIZE count=1
-    log_must dd if=/dev/urandom of="$ORIG1" bs=$RECORDSIZE count=1
-    log_must dd if=/dev/urandom of="$ORIG2" bs=$RECORDSIZE count=1
+    log_must dd if=$RANDPIPE of="$ORIG0" bs=$RECORDSIZE count=1
+    log_must dd if=$RANDPIPE of="$ORIG1" bs=$RECORDSIZE count=1
+    log_must dd if=$RANDPIPE of="$ORIG2" bs=$RECORDSIZE count=1
 
     export FIRST_HALF_ORIG0_CHECKSUM=$(first_half_checksum $ORIG0)
     export FIRST_HALF_ORIG1_CHECKSUM=$(first_half_checksum $ORIG1)
@@ -102,11 +102,11 @@ function create_existing
         log_must truncate_test -s $RECORDSIZE -f $CLONE
         ;;
     "small data")
-        log_must dd if=/dev/urandom of=$CLONE bs=$HALFRECORDSIZE count=1 \
+        log_must dd if=$RANDPIPE of=$CLONE bs=$HALFRECORDSIZE count=1 \
          2>/dev/null
         ;;
     "full data")
-        log_must dd if=/dev/urandom of=$CLONE bs=$RECORDSIZE count=1 2>/dev/null
+        log_must dd if=$RANDPIPE of=$CLONE bs=$RECORDSIZE count=1 2>/dev/null
         ;;
     *)
         log_fail "invalid existing: $existing"

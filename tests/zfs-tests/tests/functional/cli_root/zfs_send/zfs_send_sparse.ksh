@@ -51,7 +51,7 @@ function write_compare_files # <sendfs> <recvfs> <offset>
 	log_must zfs create $sendfs
 	# write sparse file
 	sendfile="$(get_prop mountpoint $sendfs)/data.bin"
-	log_must dd if=/dev/urandom of=$sendfile bs=1 count=1 seek=$offset
+	log_must dd if=$RANDPIPE of=$sendfile bs=1 count=1 seek=$offset
 	# send/receive the file
 	log_must zfs snapshot $sendfs@snap
 	log_must eval "zfs send $sendfs@snap | zfs receive $recvfs"

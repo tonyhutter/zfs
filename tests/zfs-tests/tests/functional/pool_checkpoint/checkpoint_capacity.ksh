@@ -63,7 +63,7 @@ log_must mkfile $FILEDISKSIZE $FILEDISK1
 log_must zpool create -O primarycache=metadata $NESTEDPOOL $FILEDISK1
 
 log_must zfs create $NESTEDFS0
-log_must dd if=/dev/urandom of=$NESTEDFS0FILE bs=1M count=700
+log_must dd if=$RANDPIPE of=$NESTEDFS0FILE bs=1M count=700
 FILE0INTRO=$(head -c 100 $NESTEDFS0FILE)
 
 log_must zpool checkpoint $NESTEDPOOL
@@ -75,7 +75,7 @@ log_must sync_pool $NESTEDPOOL
 #
 log_must zpool list $NESTEDPOOL
 
-log_mustnot dd if=/dev/urandom of=$NESTEDFS0FILE bs=1M count=300
+log_mustnot dd if=$RANDPIPE of=$NESTEDFS0FILE bs=1M count=300
 
 #
 # only for debugging purposes

@@ -38,7 +38,7 @@ function cleanup
 log_onexit cleanup
 
 # Write a little more than half the pool.
-log_must dd if=/dev/urandom of=/$TESTDIR/$TESTFILE0 bs=$((2**20)) \
+log_must dd if=$RANDPIPE of=/$TESTDIR/$TESTFILE0 bs=$((2**20)) \
     count=$((MINVDEVSIZE / (1024 * 1024)))
 log_mustnot zpool remove $TESTPOOL $DISKDIR/dsk1
 

@@ -49,9 +49,9 @@ log_onexit redacted_cleanup $sendfs $recvfs
 for i in {1..64}; do
 	log_must zfs clone $sendfs@snap ${clone}$i
 	mntpnt=$(get_prop mountpoint ${clone}$i)
-	log_must dd if=/dev/urandom of=$mntpnt/f2 bs=64k count=1 seek=$i \
+	log_must dd if=$RANDPIPE of=$mntpnt/f2 bs=64k count=1 seek=$i \
 	    conv=notrunc
-	log_must dd if=/dev/urandom of=$mntpnt/f2 bs=64k count=1 seek=63 \
+	log_must dd if=$RANDPIPE of=$mntpnt/f2 bs=64k count=1 seek=63 \
 	    conv=notrunc
 	log_must zfs snapshot ${clone}$i@snap
 done

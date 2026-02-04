@@ -43,7 +43,7 @@ log_onexit cleanup
 
 log_must zpool create -o feature@block_cloning=enabled $TESTPOOL $DISKS
 
-log_must dd if=/dev/urandom of=/$TESTPOOL/file1 bs=128K count=4
+log_must dd if=$RANDPIPE of=/$TESTPOOL/file1 bs=128K count=4
 log_must sync_pool $TESTPOOL
 
 log_must clonefile -r /$TESTPOOL/file1 /$TESTPOOL/file2 0 0 524288

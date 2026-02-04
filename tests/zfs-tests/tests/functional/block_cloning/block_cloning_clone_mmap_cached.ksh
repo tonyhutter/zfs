@@ -62,8 +62,8 @@ log_must zfs create $TESTPOOL/$TESTFS
 
 for opts in "--" "-i" "-o" "-io"
 do
-	log_must dd if=/dev/urandom of=/$TESTPOOL/$TESTFS/src bs=1M count=1
-	log_must dd if=/dev/urandom of=/$TESTPOOL/$TESTFS/dst bs=1M count=1
+	log_must dd if=$RANDPIPE of=/$TESTPOOL/$TESTFS/src bs=1M count=1
+	log_must dd if=$RANDPIPE of=/$TESTPOOL/$TESTFS/dst bs=1M count=1
 
 	# Clear cache.
 	log_must zpool export $TESTPOOL

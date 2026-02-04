@@ -41,7 +41,7 @@ function sync_and_rewrite_some_data_a_few_times
 
 	typeset file="/$pool/tmpfile"
 	for i in {0..$a_few_times}; do
-		dd if=/dev/urandom of=${file} bs=128k count=10
+		dd if=$RANDPIPE of=${file} bs=128k count=10
 		sync_pool "$pool"
 	done
 

@@ -134,10 +134,10 @@ function bclone_test
     case $datatype in
         random|text)
             if [[ $datatype = "random" ]]; then
-                dd if=/dev/urandom of=$original bs=$filesize count=1 2>/dev/null
+                dd if=$RANDPIPE of=$original bs=$filesize count=1 2>/dev/null
             else
                 filesize=$(((filesize/4)*4))
-                dd if=/dev/urandom bs=$(((filesize/4)*3)) count=1 | \
+                dd if=$RANDPIPE bs=$(((filesize/4)*3)) count=1 | \
                   openssl base64 -A > $original
             fi
             sync_pool $TESTPOOL

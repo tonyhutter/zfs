@@ -56,7 +56,7 @@ for recsize in "${recsize_prop_vals[@]}"; do
 
 	if is_linux || is_freebsd; then
 		log_must truncate -s $recsize $dir/$recsize
-		log_must dd if=/dev/urandom of=$dir/$recsize \
+		log_must dd if=$RANDPIPE of=$dir/$recsize \
 		    seek=$((recsize - 8)) bs=1 count=8 conv=notrunc
 	else
 		log_must mkholes -h 0:$((recsize - 8)) -d $((recsize - 8)):8 \

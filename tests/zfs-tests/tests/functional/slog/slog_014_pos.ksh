@@ -53,7 +53,7 @@ for type in "mirror" "raidz" "raidz2"; do
 			log $LDEV
 
                 # Create a file to be corrupted
-                dd if=/dev/urandom of=/$TESTPOOL/filler bs=1024k count=50
+                dd if=$RANDPIPE of=/$TESTPOOL/filler bs=1024k count=50
 
                 #
                 # Ensure the file has been synced out before attempting to
@@ -66,10 +66,10 @@ for type in "mirror" "raidz" "raidz2"; do
 		# The oseek value below is to skip past the vdev label.
 		#
 		if is_linux || is_freebsd; then
-			log_must dd if=/dev/urandom of=$VDIR/a bs=1024k \
+			log_must dd if=$RANDPIPE of=$VDIR/a bs=1024k \
 			   seek=4 conv=notrunc count=50
 		else
-			log_must dd if=/dev/urandom of=$VDIR/a bs=1024k \
+			log_must dd if=$RANDPIPE of=$VDIR/a bs=1024k \
 			   oseek=4 conv=notrunc count=50
 		fi
 		log_must zpool scrub $TESTPOOL

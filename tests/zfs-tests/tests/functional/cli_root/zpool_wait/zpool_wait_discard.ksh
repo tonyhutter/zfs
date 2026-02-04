@@ -47,7 +47,7 @@ function do_test
 {
 	typeset use_wait_flag=$1
 
-	log_must dd if=/dev/urandom of="$TESTFILE" bs=128k count=1k
+	log_must dd if=$RANDPIPE of="$TESTFILE" bs=128k count=1k
 	log_must zpool checkpoint $TESTPOOL
 
 	# Make sure bulk of space is unique to checkpoint

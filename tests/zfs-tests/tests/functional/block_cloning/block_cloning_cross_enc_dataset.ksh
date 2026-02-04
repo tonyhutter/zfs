@@ -58,9 +58,9 @@ function prepare_enc
     # will fallback to normal copy. See "dmu_read_l0_bps" in
     # "zfs/module/zfs/dmu.c" and "zfs_clone_range" in
     # "zfs/module/zfs/zfs_vnops.c"
-    log_must dd if=/dev/urandom of=/$DS1/file bs=128K count=4
-    log_must dd if=/dev/urandom of=/$DS1/child1/file bs=128K count=4
-    log_must dd if=/dev/urandom of=/$DS1_NC/file bs=128K count=4
+    log_must dd if=$RANDPIPE of=/$DS1/file bs=128K count=4
+    log_must dd if=$RANDPIPE of=/$DS1/child1/file bs=128K count=4
+    log_must dd if=$RANDPIPE of=/$DS1_NC/file bs=128K count=4
     log_must sync_pool $TESTPOOL
 }
 

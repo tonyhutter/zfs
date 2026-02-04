@@ -50,7 +50,7 @@ function sync_some_data_a_few_times
 
 	typeset file="/$pool/tmpfile"
 	for i in {0..$a_few_times}; do
-		dd if=/dev/urandom of=${file}_$i bs=128k count=10
+		dd if=$RANDPIPE of=${file}_$i bs=128k count=10
 		sync_pool "$pool"
 	done
 
@@ -71,7 +71,7 @@ function write_some_data
 	# Create 100 MB of data
 	typeset file="/$ds/fillerfile"
 	for i in {1..$files10mb}; do
-		dd if=/dev/urandom of=$file.$i bs=128k count=80 || return 1
+		dd if=$RANDPIPE of=$file.$i bs=128k count=80 || return 1
 	done
 }
 
@@ -99,7 +99,7 @@ function _generate_data_common
 		( $newdata ) && log_must zfs create "$pool/$datasetname$i"
 		for j in {1..$files}; do
 			typeset file="/$pool/$datasetname$i/file$j"
-			dd if=/dev/urandom of=$file bs=128k count=$blocks > /dev/null
+			dd if=$RANDPIPE of=$file bs=128k count=$blocks > /dev/null
 			if [[ -n $hashfile ]]; then
 				typeset cksum=$(xxh128digest $file)
 				echo $cksum $file >> $hashfile
