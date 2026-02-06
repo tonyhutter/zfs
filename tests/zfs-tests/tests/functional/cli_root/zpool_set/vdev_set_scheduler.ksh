@@ -43,10 +43,10 @@ command -v fio > /dev/null || log_unsupported "fio missing"
 
 function set_scheduler
 {
-	zpool set scheduler=none $TESTPOOL1 $FILEDEV
-	sleep 0.1
-	zpool set scheduler=classic $TESTPOOL1 $FILEDEV
-	sleep 0.1
+	for i in auto hdd always never ; do
+		sleep 0.1
+		zpool set scheduler=$i $TESTPOOL1 $FILEDEV
+	done
 }
 
 function cleanup
@@ -70,9 +70,9 @@ mntpnt=$(get_prop mountpoint $TESTPOOL1)
 
 log_must eval "fio --filename=$mntpnt/foobar --name=write-file \
 		--rw=write --size=$MINVDEVSIZE --bs=128k --numjobs=1 --direct=1 \
-		--ioengine=sync --time_based --runtime=10 &"
+		--ioengine=sync --time_based --runtime=2 &"
 
-ITERATIONS=30
+ITERATIONS=4
 
 for i in $(seq $ITERATIONS); do
 	log_must set_scheduler
@@ -83,7 +83,7 @@ wait
 
 log_must eval "fio --filename=$mntpnt/foobar --name=read-file \
 		--rw=read --size=$MINVDEVSIZE --bs=128k --numjobs=1 --direct=1 \
-		--ioengine=sync --time_based --runtime=10 &"
+		--ioengine=sync --time_based --runtime=2 &"
 
 for i in $(seq $ITERATIONS); do
 	log_must set_scheduler

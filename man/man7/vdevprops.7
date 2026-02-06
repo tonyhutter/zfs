@@ -194,26 +194,24 @@ If this device should perform new allocations, used to disable a device
 when it is scheduled for later removal.
 See
 .Xr zpool-remove 8 .
-.It Sy scheduler Ns = Ns Sy auto Ns | Ns Sy classic Ns | Ns Sy none
+.It Sy scheduler Ns = Ns Sy always Ns | Ns Sy auto Ns | Ns Sy hdd Ns | Ns Sy never
 Controls how I/O requests are added to the vdev queue when reading or
 writing to this vdev.
-This property can be set on leaf and top-level vdevs.
-When the property is set on the leaf and top-level vdev, the value of the leaf
-vdev will be used.
-If the property is only set on the top-level vdev, this value will be used.
+This property can be set on leaf vdevs.
 The value of these properties do not persist across vdev replacement.
-For this reason, it is advisable to set the property on the top-level vdev -
-not on the leaf vdev itself.
+.It Sy always
+Always adds I/O requests to the vdev queue.
 .It Sy auto
+Let ZFS choose which scheduler it thinks will be best.
+It currently selects
+.Sy hdd .
+.It Sy hdd
 Does not add I/O requests to the vdev queue if the vdev is backed by a
 non-rotational block device.
 This can sometimes improve performance for direct IOs.
 I/O requests will be added to the vdev queue if the vdev is backed by a
 rotational block device or file.
-This is the default behavior.
-.It Sy classic
-Always adds I/O requests to the vdev queue.
-.It Sy none
+.It Sy never
 Never adds I/O requests to the vdev queue.
 This is not recommended for vdevs backed by spinning disks as it could
 result in starvation.

@@ -475,7 +475,6 @@ struct vdev {
 	uint64_t	vdev_slow_io_n;
 	uint64_t	vdev_slow_io_t;
 	uint64_t	vdev_scheduler; /* control how I/Os are submitted */
-	boolean_t	vdev_scheduler_inherited;
 };
 
 #define	VDEV_PAD_SIZE		(8 << 10)

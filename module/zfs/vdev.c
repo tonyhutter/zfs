@@ -4076,18 +4076,6 @@ vdev_load(vdev_t *vd)
 		return (error);
 	}
 
-	if (vd == vd->vdev_top) {
-		for (int c = 0; c < vd->vdev_children; c++) {
-			vdev_t *cvd = vd->vdev_child[c];
-			if (!cvd->vdev_ops->vdev_op_leaf)
-				continue;
-			/*
-			 * Workaround: vdev props don't have inheritance.
-			 */
-			vdev_scheduler_set_inherited(cvd);
-		}
-	}
-
 	return (0);
 }
 
@@ -6285,19 +6273,6 @@ vdev_prop_set(vdev_t *vd, nvlist_t *innvl, nvlist_t *outnvl)
 				break;
 			}
 			vd->vdev_scheduler = intval;
-			vd->vdev_scheduler_inherited = B_FALSE;
-			if (vd->vdev_ops->vdev_op_leaf)
-				break;
-			for (int c = 0; c < vd->vdev_children; c++) {
-				vdev_t *cvd = vd->vdev_child[c];
-				if (!cvd->vdev_ops->vdev_op_leaf)
-					continue;
-				/*
-				 * Workaround: vdev props don't have
-				 * inheritance.
-				 */
-				vdev_scheduler_set_inherited(cvd);
-			}
 			break;
 		default:
 			/* Most processing is done in vdev_props_set_sync */
@@ -6721,8 +6696,6 @@ vdev_prop_get(vdev_t *vd, nvlist_t *innvl, nvlist_t *outnvl)
 
 				if (intval == vdev_prop_default_numeric(prop))
 					src = ZPROP_SRC_DEFAULT;
-				else if (vd->vdev_scheduler_inherited)
-					src = ZPROP_SRC_INHERITED;
 				else
 					src = ZPROP_SRC_LOCAL;
 
@@ -6853,13 +6826,6 @@ vdev_prop_get_inherited(vdev_t *vd, vdev_prop_t prop)
 		case VDEV_PROP_SLOW_IO_T:
 			propval = vd->vdev_slow_io_t;
 			break;
-		case VDEV_PROP_SCHEDULER:
-			if (vd->vdev_scheduler_inherited) {
-				propval = propdef;
-				break;
-			}
-			propval = vd->vdev_scheduler;
-			break;
 		default:
 			propval = propdef;
 			break;
@@ -6872,18 +6838,6 @@ vdev_prop_get_inherited(vdev_t *vd, vdev_prop_t prop)
 		return (propdef);
 
 	return (vdev_prop_get_inherited(vd->vdev_parent, prop));
-}
-
-void
-vdev_scheduler_set_inherited(vdev_t *vd)
-{
-	uint64_t vdev_scheduler_default =
-	    vdev_prop_default_numeric(VDEV_PROP_SCHEDULER);
-	vd->vdev_scheduler =
-	    vdev_prop_get_inherited(vd, VDEV_PROP_SCHEDULER);
-
-	if (vd->vdev_scheduler != vdev_scheduler_default)
-		vd->vdev_scheduler_inherited = B_TRUE;
 }
 
 EXPORT_SYMBOL(vdev_fault);

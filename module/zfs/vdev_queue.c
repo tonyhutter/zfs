@@ -895,13 +895,14 @@ vdev_should_queue_io(zio_t *zio)
 
 	switch (vd->vdev_scheduler) {
 	case VDEV_SCHEDULER_AUTO:
+	case VDEV_SCHEDULER_HDD:
 		if (vd->vdev_nonrot && vd->vdev_is_blkdev)
 			should_queue = B_FALSE;
 		break;
-	case VDEV_SCHEDULER_CLASSIC:
+	case VDEV_SCHEDULER_ALWAYS:
 		should_queue = B_TRUE;
 		break;
-	case VDEV_SCHEDULER_NONE:
+	case VDEV_SCHEDULER_NEVER:
 		should_queue = B_FALSE;
 		break;
 	default:

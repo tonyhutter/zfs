@@ -395,15 +395,17 @@ typedef enum {
 
 /*
  * Different scheduling behaviors for vdev scheduler property.
- * VDEV_SCHEDULER_AUTO = Don't queue if vdev is nonrot and backed by blkdev,
+ * VDEV_SCHEDULER_AUTO = Let ZFS pick the scheduler.
+ * VDEV_SCHEDULER_HDD = Don't queue if vdev is nonrot and backed by blkdev,
  * queue otherwise.
- * VDEV_SCHEDULER_CLASSIC = Always queue.
- * VDEV_SCHEDULER_NONE = Never queue.
+ * VDEV_SCHEDULER_ALWAYS = Always queue.
+ * VDEV_SCHEDULER_NEVER = Never queue.
  */
 typedef enum {
 	VDEV_SCHEDULER_AUTO,
-	VDEV_SCHEDULER_CLASSIC,
-	VDEV_SCHEDULER_NONE
+	VDEV_SCHEDULER_HDD,
+	VDEV_SCHEDULER_ALWAYS,
+	VDEV_SCHEDULER_NEVER
 } vdev_scheduler_type_t;
 
 /*
