@@ -4,9 +4,10 @@
 # 6) load openzfs module and run the tests
 #
 # called on runner:  qemu-6-tests.sh
-# called on qemu-vm: qemu-6-tests.sh $OS $2 $3 [--lustre] [quick|default]
+# called on qemu-vm: qemu-6-tests.sh $OS $2 $3 [--lustre|--builtin] [quick|default]
 #
 # --lustre: Test build lustre in addition to the normal tests
+# --lustre: Test build ZFS as a kernel built-in in addition to the normal tests
 ######################################################################
 
 set -eu
@@ -50,6 +51,32 @@ function do_lustre_build() {
 }
 export -f do_lustre_build
 
+# Test build ZFS into the kernel directly
+function do_builtin_build() {
+  # Get currently full kernel version (like '6.18.8')
+  fullver=$(uname -r | grep -Eo '^[0-9]+\.[0-9]+\.[0-9]+')
+
+  # Get just the major ('6')
+  major=$(echo $fullver | grep -Eo '^[0-9]+')
+  (
+  wget https://cdn.kernel.org/pub/linux/kernel/v${major}.x/linux-$fullver.tar.xz
+  tar -xf $HOME/linux-$fullver.tar.xz
+  pushd $HOME/zfs
+  ./copy-builtin $HOME/linux-$fullver
+  cd $HOME/linux-$fullver
+  make tinyconfig
+  ./scripts/config --enable EFI_PARTITON
+  ./scripts/config --enable BLOCK
+  ./scripts/config --enable ZFS
+  yes "" | make oldconfig
+  ) &> /var/tmp/builtin.txt
+  make -j `nproc` &>> /var/tmp/builtin.txt || rc=$?
+  echo "$rc" > /var/tmp/builtin-exitcode.txt
+  if [ "$rc" != "0" ] ; then
+      echo "$rc" > /var/tmp/builtin-exitcode.txt
+  fi
+}
+
 # called directly on the runner
 if [ -z ${1:-} ]; then
   cd "/var/tmp"
@@ -66,9 +93,15 @@ if [ -z ${1:-} ]; then
     # on almalinux*.  At the time of writing, the vm2 tests were
     # completing roughly 15min before the vm1 tests, so it makes sense
     # to have vm2 do the build.
+    #
+    # In addition, we do an additional test build of ZFS as a Linux
+    # kernel built-in on Fedora.  Again, we do it on vm2 to exploit vm2's
+    # early finish time.
     extra=""
     if [[ "$OS" == almalinux* ]] && [[ "$i" == "2" ]] ; then
         extra="--lustre"
+    elif [[ "$OS" == fedora* ]] && [[ "$i" == "2" ]] ; then
+        extra="--builtin"
     fi
 
     daemonize -c /var/tmp -p vm${i}.pid -o vm${i}log.txt -- \
@@ -106,8 +139,12 @@ DEN="$1"
 shift
 
 BUILD_LUSTRE=0
+BUILD_BUILTIN=0
 if [ "$1" == "--lustre" ] ; then
   BUILD_LUSTRE=1
+  shift
+elif [ "$1" == "--builtin" ] ; then
+  BUILD_BUILTIN=1
   shift
 fi
 
@@ -162,6 +199,9 @@ esac
 # The Lustre build on its own takes ~15min.
 if [ "$BUILD_LUSTRE" == "1" ] ; then
   do_lustre_build &
+elif [ "$BUILD_BUILTIN" == "1" ] ; then
+  # Try building ZFS directly into the Linux kernel (not as a module)
+  do_builtin_build &
 fi
 
 # run functional testings and save exitcode
