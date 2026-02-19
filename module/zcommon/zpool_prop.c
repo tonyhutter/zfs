@@ -328,9 +328,8 @@ vdev_prop_init(void)
 
 	static const zprop_index_t vdevschedulertype_table[] = {
 		{ "auto",	VDEV_SCHEDULER_AUTO },
-		{ "always",	VDEV_SCHEDULER_ALWAYS },
-		{ "hdd",	VDEV_SCHEDULER_HDD },
-		{ "never",	VDEV_SCHEDULER_NEVER },
+		{ "on",		VDEV_SCHEDULER_ON },
+		{ "off",	VDEV_SCHEDULER_OFF },
 		{ NULL }
 	};
 
@@ -494,7 +493,7 @@ vdev_prop_init(void)
 	    "SLOW_IO_EVENTS", boolean_table, sfeatures);
 	zprop_register_index(VDEV_PROP_SCHEDULER, "scheduler",
 	    VDEV_SCHEDULER_AUTO, PROP_DEFAULT, ZFS_TYPE_VDEV,
-	    "auto | hdd | always | never", "IO_SCHEDULER",
+	    "auto | on | off", "IO_SCHEDULER",
 	    vdevschedulertype_table, sfeatures);
 
 	/* hidden properties */

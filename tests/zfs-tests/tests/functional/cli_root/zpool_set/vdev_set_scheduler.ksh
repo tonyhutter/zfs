@@ -43,7 +43,7 @@ command -v fio > /dev/null || log_unsupported "fio missing"
 
 function set_scheduler
 {
-	for i in auto hdd always never ; do
+	for i in auto on off ; do
 		sleep 0.1
 		zpool set scheduler=$i $TESTPOOL1 $FILEDEV
 	done
