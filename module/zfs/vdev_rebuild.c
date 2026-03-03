@@ -617,7 +617,6 @@ vdev_rebuild_range(vdev_rebuild_t *vr, uint64_t start, uint64_t size)
 		return (SET_ERROR(EINTR));
 	}
 	mutex_exit(&vd->vdev_rebuild_lock);
-	dmu_tx_commit(tx);
 
 	vr->vr_scan_offset[txg & TXG_MASK] = start + size;
 	vr->vr_pass_bytes_issued += size;
@@ -627,6 +626,9 @@ vdev_rebuild_range(vdev_rebuild_t *vr, uint64_t start, uint64_t size)
 	    abd_alloc(psize, B_FALSE), psize, vdev_rebuild_cb, vr,
 	    ZIO_PRIORITY_REBUILD, ZIO_FLAG_RAW | ZIO_FLAG_CANFAIL |
 	    ZIO_FLAG_RESILVER, NULL));
+	/* vdev_rebuild_cb releases SCL_STATE_ALL */
+
+	dmu_tx_commit(tx);
 
 	return (0);
 }
