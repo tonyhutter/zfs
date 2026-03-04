@@ -3563,9 +3563,32 @@ zpool_vdev_fault(zpool_handle_t *zhp, uint64_t guid, vdev_aux_t aux)
 	zfs_cmd_t zc = {"\0"};
 	char errbuf[ERRBUFLEN];
 	libzfs_handle_t *hdl = zhp->zpool_hdl;
+	nvlist_t *vdev_nv;
+	boolean_t avail_spare, l2cache;
+	char *vdev_name;
+	char guid_str[21]; /* 64-bit num + '\0' */
 
 	(void) snprintf(errbuf, sizeof (errbuf),
 	    dgettext(TEXT_DOMAIN, "cannot fault %llu"), (u_longlong_t)guid);
+
+	snprintf(guid_str, sizeof (guid_str), "%llu", (u_longlong_t)guid);
+	if ((vdev_nv = zpool_find_vdev(zhp, guid_str, &avail_spare,
+	    &l2cache, NULL)) == NULL)
+		return (zfs_error(hdl, EZFS_NODEVICE, errbuf));
+
+	vdev_name = zpool_vdev_name(hdl, zhp, vdev_nv, 0);
+	if (vdev_name != NULL) {
+		/*
+		 * We have the actual vdev name, so use that instead of the GUID
+		 * in any error messages.
+		 */
+		(void) snprintf(errbuf, sizeof (errbuf),
+		    dgettext(TEXT_DOMAIN, "cannot fault %s"), vdev_name);
+		free(vdev_name);
+	}
+
+	if (avail_spare)
+		return (zfs_error(hdl, EZFS_ISSPARE, errbuf));
 
 	(void) strlcpy(zc.zc_name, zhp->zpool_name, sizeof (zc.zc_name));
 	zc.zc_guid = guid;
