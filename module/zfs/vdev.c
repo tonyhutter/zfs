@@ -4309,6 +4309,9 @@ vdev_fault(spa_t *spa, uint64_t guid, vdev_aux_t aux)
 	if (!vd->vdev_ops->vdev_op_leaf)
 		return (spa_vdev_state_exit(spa, NULL, SET_ERROR(ENOTSUP)));
 
+	if (vd->vdev_isspare)
+		return (spa_vdev_state_exit(spa, NULL, SET_ERROR(ENOTSUP)));
+
 	tvd = vd->vdev_top;
 
 	/*
@@ -4556,8 +4559,8 @@ top:
 	if (!vd->vdev_ops->vdev_op_leaf)
 		return (spa_vdev_state_exit(spa, NULL, SET_ERROR(ENOTSUP)));
 
-	if (vd->vdev_ops == &vdev_draid_spare_ops)
-		return (spa_vdev_state_exit(spa, NULL, ENOTSUP));
+	if (vd->vdev_isspare)
+		return (spa_vdev_state_exit(spa, NULL, SET_ERROR(ENOTSUP)));
 
 	tvd = vd->vdev_top;
 	mg = tvd->vdev_mg;
