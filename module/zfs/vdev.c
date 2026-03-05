@@ -4691,6 +4691,14 @@ vdev_clear(spa_t *spa, vdev_t *vd)
 	for (int c = 0; c < vd->vdev_children; c++)
 		vdev_clear(spa, vd->vdev_child[c]);
 
+	if (vd == rvd) {
+		/*
+		 * We're clearing "all".  Clear l2arc cache devices as well.
+		 */
+		for (int c = 0; c < spa->spa_l2cache.sav_count; c++)
+			vdev_clear(spa, spa->spa_l2cache.sav_vdevs[c]);
+	}
+
 	/*
 	 * It makes no sense to "clear" an indirect  or removed vdev.
 	 */
@@ -4721,7 +4729,12 @@ vdev_clear(spa_t *spa, vdev_t *vd)
 
 		vd->vdev_forcefault = B_FALSE;
 
-		if (vd != rvd && vdev_writeable(vd->vdev_top))
+		/*
+		 * The 'vd->vdev_islog' part of the check was added here
+		 * to allow clearing of force-faulted log devices.
+		 */
+		if ((vd != rvd && vdev_writeable(vd->vdev_top)) ||
+		    (vd->vdev_islog || vd->vdev_isl2cache))
 			vdev_state_dirty(vd->vdev_top);
 
 		/* If a resilver isn't required, check if vdevs can be culled */
