@@ -42,7 +42,8 @@
 # 2. Make errors to pool
 # 3. Use zpool clear to clear errors
 # 4. Verify the errors has been cleared.
-#
+# 5. Force-fault 'log' and 'cache' vdevs
+# 6. Verify zpool clear removes 'log' and 'cache' vdevs force-faulted state
 
 verify_runnable "global"
 
@@ -156,5 +157,28 @@ log_note "'zpool clear' clears top-level pool error."
 for devconf in "${poolconf[@]}"; do
 	do_testing "pool" $devconf
 done
+
+# Make sure we can clear force-faulted state on log and cache devices
+log_must zpool create $TESTPOOL1 $fbase.0 log $fbase.1 cache $fbase.2
+log_must zpool offline -f $TESTPOOL1 $fbase.1
+log_must check_state $TESTPOOL1 $fbase.1 "FAULTED"
+log_must zpool clear $TESTPOOL1 $fbase.1
+log_must check_state $TESTPOOL1 $fbase.1 "ONLINE"
+
+log_must zpool offline -f $TESTPOOL1 $fbase.2
+log_must check_state $TESTPOOL1 $fbase.2 "FAULTED"
+log_must zpool clear $TESTPOOL1 $fbase.2
+log_must check_state $TESTPOOL1 $fbase.2 "ONLINE"
+
+log_must zpool offline -f $TESTPOOL1 $fbase.1
+log_must zpool offline -f $TESTPOOL1 $fbase.2
+log_must check_state $TESTPOOL1 $fbase.1 "FAULTED"
+log_must check_state $TESTPOOL1 $fbase.2 "FAULTED"
+
+log_must zpool clear $TESTPOOL1
+log_must check_state $TESTPOOL1 $fbase.2 "ONLINE"
+log_must check_state $TESTPOOL1 $fbase.2 "ONLINE"
+
+destroy_pool $TESTPOOL1
 
 log_pass "'zpool clear' clears pool errors as expected."
