@@ -159,7 +159,7 @@ ENV="/var/tmp/env.txt"
 echo "ENV=$ENV" >> $ENV
 
 # result path
-echo 'RESPATH="/var/tmp/test_results"' >> $ENV
+echo "RESPATH=/var/tmp/qemu-$OS" >> $ENV
 
 # FreeBSD 13 has problems with: e1000 and virtio
 echo "NIC=$NIC" >> $ENV
