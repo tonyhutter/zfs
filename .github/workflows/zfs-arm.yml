@@ -10,6 +10,11 @@ on:
         required: false
         default: ""
         description: "(optional) install specific GCC version, like '16'"
+      test_tag:
+        type: string
+        required: false
+        default: ""
+        description: "(optional) run test suite with specific -T tag (like 'zpool_status', or '1/1' for all tests)"
 
 jobs:
   zfs-arm:
@@ -74,3 +79,13 @@ jobs:
         zpool status
 
         echo "Built ZFS successfully on ARM"
+    - name: Optional test
+      timeout-minutes: 270
+      run: |
+        if [ "${{ github.event.inputs.test_tag }}" != "" ] ; then
+          tag="${{ github.event.inputs.test_tag }}"
+          .github/workflows/scripts/qemu-6-tests.sh ubuntu24 $tag | \
+            ./scripts/zfs-tests-color.sh
+        else
+          echo "Empty test tag, skip tests"
+        fi

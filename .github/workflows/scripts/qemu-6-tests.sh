@@ -4,7 +4,7 @@
 # 6) load openzfs module and run the tests
 #
 # called on runner:  qemu-6-tests.sh
-# called on qemu-vm: qemu-6-tests.sh $OS $2 $3 [--lustre|--builtin] [quick|default]
+# called on qemu-vm: qemu-6-tests.sh $OS $TAG [--lustre|--builtin] [quick|default]
 #
 # --lustre: Test build lustre in addition to the normal tests
 # --builtin: Test build ZFS as a kernel built-in in addition to the normal tests
@@ -117,7 +117,7 @@ if [ -z ${1:-} ]; then
     fi
 
     daemonize -c /var/tmp -p vm${i}.pid -o vm${i}log.txt -- \
-      $SSH zfs@$IP $TESTS $OS $i $VMs $extra $CI_TYPE
+      $SSH zfs@$IP $TESTS $OS "$i/$VMs" $extra $CI_TYPE
     # handly line by line and add info prefix
     stdbuf -oL tail -fq vm${i}log.txt \
       | while read -r line; do prefix "$i" "$line"; done &
@@ -145,23 +145,23 @@ fi
 # Process cmd line args
 OS="$1"
 shift
-NUM="$1"
-shift
-DEN="$1"
+TAGS="$1"
 shift
 
 BUILD_LUSTRE=0
 BUILD_BUILTIN=0
-if [ "$1" == "--lustre" ] ; then
-  BUILD_LUSTRE=1
-  shift
-elif [ "$1" == "--builtin" ] ; then
-  BUILD_BUILTIN=1
-  shift
-fi
+if [ "$#" -gt 0 ] ; then
+  if [ "$1" == "--lustre" ] ; then
+    BUILD_LUSTRE=1
+    shift
+  elif [ "$1" == "--builtin" ] ; then
+    BUILD_BUILTIN=1
+    shift
+  fi
 
-if [ "$1" == "quick" ] ; then
-  export RUNFILES="sanity.run"
+  if [ "$1" == "quick" ] ; then
+    export RUNFILES="sanity.run"
+  fi
 fi
 
 export PATH="$PATH:/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/sbin:/usr/local/bin"
@@ -181,8 +181,15 @@ case "$OS" in
     TDIR="/usr/share/zfs"
     sudo -E modprobe zfs
     sudo mv -f /var/tmp/*.txt /tmp
-    sudo mkfs.xfs -fq /dev/vdb
-    sudo mount -o noatime /dev/vdb /var/tmp
+    if [ -b /dev/vdb ] ; then
+      # VMs
+      sudo mkfs.xfs -fq /dev/vdb
+      sudo mount -o noatime /dev/vdb /var/tmp
+    else
+      # ARM builder running the VM code
+      mkdir -p /var/tmp
+    fi
+
     sudo chmod 1777 /var/tmp
     sudo mv -f /tmp/*.txt /var/tmp
     ;;
@@ -218,7 +225,6 @@ fi
 
 # run functional testings and save exitcode
 cd /var/tmp
-TAGS=$NUM/$DEN
 sudo dmesg -c > dmesg-prerun.txt
 mount > mount.txt
 df -h > df-prerun.txt
