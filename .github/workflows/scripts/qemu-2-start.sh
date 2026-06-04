@@ -55,12 +55,14 @@ case "$OS" in
     ;;
   centos-stream9)
     OSNAME="CentOS Stream 9"
-    URL="https://cloud.centos.org/centos/9-stream/x86_64/images/CentOS-Stream-GenericCloud-9-latest.x86_64.qcow2"
+    URL="https://cloud.centos.org/centos/9-stream/x86_64/images/CentOS-Stream-GenericCloud-x86_64-9-latest.x86_64.qcow2"
     ;;
   centos-stream10)
     OSNAME="CentOS Stream 10"
     OSv="centos-stream9"
-    URL="https://cloud.centos.org/centos/10-stream/x86_64/images/CentOS-Stream-GenericCloud-10-latest.x86_64.qcow2"
+    # Use the Almalinux "kitten" repos since the official Centos stream repos
+    # often give us HTTP errors.
+    URL="https://kitten.repo.almalinux.org/10-kitten/cloud/x86_64/images/AlmaLinux-Kitten-GenericCloud-10-latest.x86_64.qcow2"
     ;;
   debian11)
     OSNAME="Debian 11"
