@@ -51,6 +51,16 @@ function do_lustre_build() {
 }
 export -f do_lustre_build
 
+function do_unit_test() {
+  local rc=0
+  ls -l
+  make -C ~/zfs -j $(nproc) unit &> /var/tmp/unit.txt || rc=$?
+  echo "$rc" > /var/tmp/unit-exitcode.txt
+  if [ "$rc" != "0" ] ; then
+      echo "$rc" > /var/tmp/tests-exitcode.txt
+  fi
+}
+
 # Test build ZFS into the kernel directly
 function do_builtin_build() {
   local rc=0
@@ -223,6 +233,8 @@ elif [ "$BUILD_BUILTIN" == "1" ] ; then
   # Try building ZFS directly into the Linux kernel (not as a module)
   do_builtin_build &
 fi
+
+do_unit_test
 
 # run functional testings and save exitcode
 cd /var/tmp

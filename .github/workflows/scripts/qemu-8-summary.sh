@@ -68,6 +68,19 @@ for ((i=1; i<=VMs; i++)); do
     test -s "$file" && showfile_tail "$file" "$vm: Lustre build"
   fi
 
+  # Print unit test results
+  if [ -f vm$i/unit-exitcode.txt ] ; then
+    rv=$(< vm$i/unit-exitcode.txt)
+    if [ $rv = 0 ]; then
+      vm="[92mvm$i[0m"
+    else
+      vm="[1;91mvm$i[0m"
+      touch /tmp/have_failed_tests
+    fi
+    file="vm$i/unit.txt"
+    test -s "$file" && showfile_tail "$file" "$vm: Unit test"
+  fi
+
   if [ -f vm$i/builtin-exitcode.txt ] ; then
     rv=$(< vm$i/builtin-exitcode.txt)
     if [ $rv = 0 ]; then
