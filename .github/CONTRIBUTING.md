@@ -210,6 +210,16 @@ first line in the commit message.
 please summarize important information such as why the proposed
 approach was chosen or a brief description of the bug you are resolving.
 Each line of the body must be 72 characters or less.
+* AI generated code must include a "Assisted-by" line in the commit
+message.  For example:
+```
+Assisted-by: Gemini:gemini-3.1-pro
+```
+The "Assisted-by" line comes from the Linux Kernel's Attribution policy:
+https://docs.kernel.org/process/coding-assistants.html
+
+All AI generated code must comply with the relevant code licenses.
+
 * The last line must be a `Signed-off-by:` tag. See the
 [Signed Off By](#signed-off-by) section for more information.
 
