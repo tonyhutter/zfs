@@ -576,6 +576,7 @@ EXPORT_SYMBOL(zone_dataset_admin_check);
  * - It is a parent of a namespace entry.
  * - It is one of the namespace entries.
  * - It is a child of a namespace entry.
+ * - It is a reference to a namespace entry (snapshot or bookmark).
  *
  * A dataset is writable if:
  * - It is one of the namespace entries.
