@@ -2330,6 +2330,7 @@ nobase_dist_datadir_zfs_tests_tests_SCRIPTS += \
 	functional/user_namespace/user_namespace_002.ksh \
 	functional/user_namespace/user_namespace_003.ksh \
 	functional/user_namespace/user_namespace_004.ksh \
+	functional/user_namespace/user_namespace_attach.ksh \
 	functional/userquota/cleanup.ksh \
 	functional/userquota/groupspace_001_pos.ksh \
 	functional/userquota/groupspace_002_pos.ksh \

@@ -16,6 +16,9 @@ scripts_zfs_tests_bin_PROGRAMS += %D%/suid_write_to_file
 scripts_zfs_tests_bin_PROGRAMS += %D%/truncate_test
 scripts_zfs_tests_bin_PROGRAMS += %D%/zfs_diff-socket
 
+scripts_zfs_tests_bin_PROGRAMS += %D%/attach_test
+%C%_attach_test_LDADD = \
+	libnvpair.la
 
 scripts_zfs_tests_bin_PROGRAMS += %D%/badsend
 %C%_badsend_LDADD = \
