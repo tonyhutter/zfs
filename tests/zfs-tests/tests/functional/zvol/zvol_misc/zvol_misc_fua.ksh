@@ -93,6 +93,7 @@ function do_test {
 	log_must diff $datafile1 $datafile2
 
 	log_must rm $datafile1 $datafile2
+	log_must zpool sync
 }
 
 log_assert "Verify that a ZFS volume can do Force Unit Access (FUA)"
@@ -102,15 +103,16 @@ log_must zfs set compression=off $TESTPOOL/$TESTVOL
 log_must truncate -s 100M $datafile3
 log_must zpool add $TESTPOOL log $datafile3
 
-log_note "Testing without blk-mq"
-
-set_blk_mq 0
 log_must zpool export $TESTPOOL
+
+log_note "Testing without blk-mq"
+set_blk_mq 0
 log_must zpool import $TESTPOOL
 do_test
-
-set_blk_mq 1
 log_must zpool export $TESTPOOL
+
+log_note "Testing with blk-mq"
+set_blk_mq 1
 log_must zpool import $TESTPOOL
 do_test
 
