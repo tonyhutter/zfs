@@ -4,5 +4,6 @@
 # up and copies over the zfs source directory.
 echo "Build modules in QEMU machine"
 sudo virsh start openzfs
+echo "waiting for vm0"
 .github/workflows/scripts/qemu-wait-for-vm.sh vm0
 rsync -ar $HOME/work/zfs/zfs zfs@vm0:./
