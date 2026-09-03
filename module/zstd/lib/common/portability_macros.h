@@ -48,7 +48,9 @@
 
 /* detects whether we are being compiled under asan */
 #ifndef ZSTD_ADDRESS_SANITIZER
-#  if __has_feature(address_sanitizer)
+#  if defined(_KERNEL) && !defined(ADDRESS_SANITIZER)
+#    define ZSTD_ADDRESS_SANITIZER 0	/* kernel build with no sanitizer */
+#  elif __has_feature(address_sanitizer)
 #    define ZSTD_ADDRESS_SANITIZER 1
 #  elif defined(__SANITIZE_ADDRESS__)
 #    define ZSTD_ADDRESS_SANITIZER 1
