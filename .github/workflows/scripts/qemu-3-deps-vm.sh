@@ -206,7 +206,19 @@ case "$1" in
 
     # Optional: Install an experimental kernel ($2 = kernel version)
     if [ -n "${2:-}" ] ; then
-      install_fedora_experimental_kernel "$2"
+        if [ "$2" == "debug" ] ; then
+          echo "Installing debug kernel"
+          # install debug kernel for current fedora
+          sudo dnf install -y kernel-debug kernel-debug-devel
+          echo "Updating GRUB"
+          # Set GRUB default to the new debug kernel
+          newkern="$(ls /boot/vmlinuz-* | grep debug)"
+          echo "New kernel: $newkern"
+          sudo grubby --set-default "$newkern"
+          echo "Done with debug kernel"
+        else
+          install_fedora_experimental_kernel "$2"
+        fi
     fi
     ;;
   freebsd*)

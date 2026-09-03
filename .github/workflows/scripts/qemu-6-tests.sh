@@ -252,7 +252,16 @@ sudo dmesg -c > dmesg-prerun.txt
 mount > mount.txt
 df -h > df-prerun.txt
 RV=0
-$TDIR/zfs-tests.sh -vKO -s 3GB -T $TAGS || RV=$?
+
+# Special case: if we're running a debug kernel in the CI, then we should
+# enable kmemleak in ZTS
+EXTRA=""
+if uname -a | grep -q debug ; then
+        echo "Enable kmemleak"
+        EXTRA="-m"
+fi
+
+$TDIR/zfs-tests.sh -vKO -s 3GB -T $TAGS $EXTRA || RV=$?
 
 df -h > df-postrun.txt
 echo $RV > tests-exitcode.txt
