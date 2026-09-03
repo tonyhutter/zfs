@@ -25,6 +25,8 @@ if [[ $ver =~ ^[0-9]+\.[0-9]+ ]] ; then
   # We got a kernel version, update META to say we support it so we
   # can test against it.
   sed -i -E 's/Linux-Maximum: .+/Linux-Maximum: '$ver'/g' META
+elif [[ "$ver" == "debug" ]] ; then
+  sed -i 's/CDDL/GPL/g' META
 fi
 
 scp .github/workflows/scripts/qemu-3-deps-vm.sh zfs@vm0:qemu-3-deps-vm.sh
