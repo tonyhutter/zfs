@@ -204,6 +204,9 @@ find_runfile() {
 # into portions and print that portion.  So "1/3" for "the first third of the
 # test tags".
 #
+# The function finishes by printing comma-separated test groups, like:
+#
+# "acl,alloc_class,append,async_destroy,atime,block_cloning,bootfs, ..."
 #
 split_tags() {
 	# Get numerator and denominator
@@ -224,23 +227,102 @@ split_tags() {
 	#    enough to know to run the tag in each runfile.  So '-T zpool_add'
 	#    will run the zpool_add from common.run and linux.run.
 	# 4. Ignore the 'functional' tag since we only want individual tests
-	# 5. Print out the tests in our faction of all tests.  This uses modulus
-	#    so "1/3" will run tests 1,3,6,9 etc.  That way the tests are
-	#    interleaved so, say, "3/4" isn't running all the zpool_* tests that
-	#    appear alphabetically at the end.
-	# 6. Remove trailing comma from list
 	#
-	# TAGS will then look like:
-	#
-	# "append,atime,bootfs,cachefile,checksum,cp_files,deadman,dos_attributes, ..."
+	# When this is done, all_groups will contain a list of all the tests.
 
 	# Change the comma to a space for easy processing
 	_RUNFILES=${RUNFILES//","/" "}
 	# shellcheck disable=SC2002,SC2086
-	cat $_RUNFILES | tr -d "[],\'" | awk '/tags = /{print $NF}' | sort | \
-		uniq | grep -v functional | \
-		awk -v num="$NUM" -v den="$DEN" '{ if(NR % den == (num - 1)) {printf "%s,",$0}}' | \
-		sed -E 's/,$//'
+	all_groups="$(cat $_RUNFILES | tr -d "[],\'" | \
+		awk '/tags = /{print $NF}' | sort | \
+		uniq | grep -v functional)"
+
+	# Load 'testdb' associative array.  That array contains expected test
+	# group run times.  We will later use this to divide up the tests evenly
+	# by total run time.
+	source ${0%/*}/testdb.sh
+
+	# Figure out the average time a test group takes to run
+	total=0
+	for value in "${testdb[@]}"; do
+		let "total += value"
+	done
+	average=$(($total / ${#testdb[@]}))
+
+	# Create a new associative array for the actual tests in this workspace.
+	# There may or may not be testdb entries for them, depending on how
+	# stale testdb is.
+	declare -A this_testdb
+	for i in $all_groups ; do
+		if ! [[ -v testdb[$i] ]]; then
+			# This test is not in testdb, so we don't know how
+			# long it will take to run.  Use the average as
+			# a best guess.
+			this_testdb[$i]=$average
+		else
+			# There was a testdb entry for it
+			this_testdb[$i]=${testdb[$i]}
+		fi
+	done
+
+	# Sort this_testdb[] in descending order by value
+	out=""
+	out="$(for key in "${!this_testdb[@]}"; do
+		echo """$key ${this_testdb[$key]}"""
+	done | sort -r -n -k 2)"
+	this_testdb=()
+	while read key value ; do
+		this_testdb[$key]=$value
+	done <<< "$out"
+
+	# this_testdb[] now contains runtimes for all the tests we want to
+	# run.  Use these runtimes to divide up the test as evenly as possible.
+	declare -a total_time
+	for ((i=1; i <=$DEN; i++)) ; do
+		# Initialize
+		total_time[$i]=0
+		tests[$i]=""
+	done
+
+
+	# Sort this_testdb[] in descending order by value.  Then iterate over
+	# the key/value pairs.
+	out="$(for key in "${!this_testdb[@]}"; do
+		echo """$key ${this_testdb[$key]}"""
+	done | sort -r -n -k 2)"
+	while read key val ; do
+		# Figure out which bucket to put the test in
+		min=999999999
+		min_index=1
+		for ((i=1; i <=$DEN; i++)) ; do
+			if [[ ${total_time[$i]} -le $min ]] ; then
+				min=${total_time[$i]}
+				min_index=$i
+			fi
+		done
+
+		# Special case: we don't want all the 0-second tests to fall in
+		# the same bucket, so decide the bucket by hashing the key
+		# length.
+		if [[ $val == 0 ]] ; then
+			strlen=${#key}
+			min_index=$((($strlen % $DEN) + 1))
+		fi
+
+		# Put the test into the bucket
+		tests[$min_index]="${tests[$min_index]} $key"
+		let "total_time[$min_index] += ${this_testdb[$key]}"
+	done <<< "$out"
+
+	# All the buckets have their test lists now.  The lists are sorted
+	# from longest to shortest and look like:
+	#
+	# tests[1] = "mmp bclone replacement rsend fault slog ..."
+	#
+	# Sort the list alphabetically and make it comma separated.  Remove
+	# the trailing comma.
+	echo "${tests[$NUM]}" | sed 's/ /\n/g' | \
+		sort | xargs printf "%s," | sed -E 's/,$//'
 }
 
 #
@@ -792,7 +874,7 @@ read -r RUNRESULT <"$REPORT_FILE"
 
 if [[ "$RUNRESULT" -eq "255" ]] ; then
     fail "$TEST_RUNNER failed, test aborted."
-fi 
+fi
 
 #
 # Analyze the results.

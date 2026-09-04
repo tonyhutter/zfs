@@ -64,6 +64,7 @@ jobs:
             ;;
           esac
 
+          os_selection='["fedora44"]'
           # Repository-level override for OS selection.
           # Set vars.ZTS_OS_OVERRIDE in repo settings to restrict targets
           # (e.g. '["debian13"]' or '["debian13", "fedora44"]').
