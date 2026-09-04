@@ -13,15 +13,6 @@
 
 set -eu
 
-if which lsmod &>/dev/null ; then
-        echo "Memory balloon (linux)"
-        lsmod | grep virtio_balloon
-        if [ ! -e '/sys/module/virtio_balloon' ] ; then
-                echo "Loading memory balloon"
-                modprobe virtio_balloon 2>&1 || true
-        fi
-fi
-
 function alpine() {
   echo "##[group]Install Development Tools"
   sudo apk add \

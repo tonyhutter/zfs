@@ -554,6 +554,32 @@ function get_all_pools
 	zpool list -H -o name | grep -Fvx "$KEEP" | grep -v "$NO_POOLS"
 }
 
+# Like 'blkdiscard -f' but also works on FreeBSD.  Use as you would
+# use 'blkdiscard -f'.  The discard only takes ~10ms on a loopback device.
+function blkdiscard_generic
+{
+	if is_linux ; then
+		# We need '--force' here since the prior tests may leave a filesystem
+		# on the zvol, and blkdiscard will see that filesystem and print a
+		# warning unless you force it.
+		#
+		# Note that on some platforms (like Alma8) you can't just send a
+		# 3GB TRIM range command.  Chunk it up instead with the -p option.
+		if blkdiscard --help | grep -q '\-\-force' ; then
+			blkdiscard -p $((16 * 1024 * 1024)) --force "$@"
+		else
+			blkdiscard -p $((16 * 1024 * 1024)) "$@"
+		fi
+	else
+		# By default, FreeBSD 'trim' always does a dry-run.  '-f' makes
+		# it perform the actual operation.
+		trim -f "$@"
+	fi
+
+	# Invalidate kernel cache for device
+	blockdev --flushbufs "$@"
+}
+
 function default_cleanup_noexit
 {
 	typeset pool=""
@@ -622,14 +648,16 @@ function default_cleanup_noexit
 	[[ -d $TESTDIR ]] && \
 		log_must rm -rf $TESTDIR
 
-	disk1=${DISKS%% *}
-	if is_mpath_device $disk1; then
-		delete_partitions
-	fi
+	delete_partitions
+
+	# 'trim' the disk device.  This can free up memory/disk space quickly
+	# on the underlying device.
+	for disk in $DISKS ; do
+		blkdiscard_generic /dev/$disk
+	done
 
 	rm -f $TEST_BASE_DIR/{err,out}
 }
-
 
 #
 # Common function used to cleanup storage pools, file systems

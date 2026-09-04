@@ -14,13 +14,16 @@ PID=$(pidof /usr/bin/qemu-system-x86_64)
 tail --pid=$PID -f /dev/null
 sudo virsh undefine --nvram openzfs
 
+# cpu pinning
+CPUSET=("0,1" "2,3")
+
 # additional options for virt-install
 OPTS[0]=""
 OPTS[1]=""
 
 # Dedicated and overcommited RAM
 RAM=3
-MAXRAM=6
+MAXRAM=8
 case "$OS" in
   debian13)
     # Boot Debian 13 with uefi=on and secureboot=off (ZFS Kernel Module not signed)
@@ -35,9 +38,11 @@ PUBKEY=$(cat ~/.ssh/id_ed25519.pub)
 # Enable aggressive swap
 sudo sysctl vm.swappiness=100
 
-# Add more swap.  Ubuntu comes with 3GB of swap, so add another 13GB to match
-# out 16GB of RAM.
-sudo dd if=/dev/zero of=/swapfile2 bs=1M count=$((13 * 1024))
+sudo modprobe zram
+
+# Add more swap.  Ubuntu comes with 3GB of swap, so add another 18GB to swap
+# out the zram.
+sudo fallocate -l $((18 * 1024 * 1024 * 1024)) /swapfile2
 sudo chmod 600 /swapfile2
 sudo mkswap /swapfile2
 sudo swapon /swapfile2
@@ -90,6 +95,10 @@ EOF
   THIS_DISK=/var/lib/libvirt/images/disk$i
   TESTDISK=/var/lib/libvirt/images/testdisk$i
 
+  tdisk1=$(sudo zramctl --find --algorithm zstd --size 3G)
+  tdisk2=$(sudo zramctl --find --algorithm zstd --size 3G)
+  tdisk3=$(sudo zramctl --find --algorithm zstd --size 3G)
+
   # Each VM gets a snapshot of the OS disk and build disk to save space
   sudo qemu-img create -f qcow2 -o backing_file=$DISK -F qcow2 $THIS_DISK
 
@@ -103,6 +112,7 @@ EOF
     --cpu host-passthrough \
     --virt-type=kvm --hvm \
     --vcpus=$CPU,sockets=1 \
+    --cpuset=${CPUSET[$((i-1))]} \
     --memory memory=$((1024*MAXRAM)),currentMemory=$((1024*RAM)), \
     --memballoon model=virtio,autodeflate=on \
     --graphics none \
@@ -110,6 +120,9 @@ EOF
     --network bridge=virbr0,model=$NIC,mac="52:54:00:83:79:0$i" \
     --disk $THIS_DISK,bus=virtio,cache=writeback,format=qcow2,driver.discard=unmap,io=io_uring \
     --disk $TESTDISK,bus=virtio,cache=writeback,format=qcow2,driver.discard=unmap,io=io_uring \
+    --disk $tdisk1,bus=virtio,cache=none,format=raw,driver.discard=unmap,io=io_uring,serial=tdisk1 \
+    --disk $tdisk2,bus=virtio,cache=none,format=raw,driver.discard=unmap,io=io_uring,serial=tdisk2 \
+    --disk $tdisk3,bus=virtio,cache=none,format=raw,driver.discard=unmap,io=io_uring,serial=tdisk3 \
     --import --noautoconsole ${OPTS[0]} ${OPTS[1]} || true
 
 done
