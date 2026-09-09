@@ -161,9 +161,6 @@ if [ -z ${1:-} ]; then
     kill $pid || true
   done
 
-  echo "ZSWAP stats"
-  sudo grep -r . /sys/kernel/debug/zswap/
-
   kill -9 $monitor_pid
 
   exit 0
