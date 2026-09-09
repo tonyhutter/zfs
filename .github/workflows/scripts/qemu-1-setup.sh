@@ -112,43 +112,13 @@ fi
 sudo modprobe loop
 sudo modprobe zfs
 
-if [ -e /dev/disk/cloud/azure_resource-part1 ] ; then
-  echo "We have two 75GB block devices"
-  # partition the disk as needed
-  DISK="/dev/disk/cloud/azure_resource"
-  sudo sgdisk --zap-all $DISK
-  sudo sgdisk -p \
-   -n 1:0:+16G -c 1:"swap" \
-   -n 2:0:0    -c 2:"tests" \
-   $DISK
-  sync
-  sleep 1
-
-  sudo fallocate -l 12G /test.ssd2
-  DISKS="$DISK-part2 /test.ssd2"
-
-  SWAP=$DISK-part1
-else
-  echo "We have a single 150GB block device"
-  sudo fallocate -l 72G /test.ssd2
-  SWAP=/swapfile.ssd
-  sudo fallocate -l 16G $SWAP
-  sudo chmod 600 $SWAP
-  DISKS="/test.ssd2"
-fi
-
-# swap with same size as RAM (16GiB)
+# Enable zswap
 echo 1 | sudo tee /sys/module/zswap/parameters/enabled
 echo "Compressor:"
 sudo cat /sys/module/zswap/parameters/compressor || true
 echo zstd | sudo tee /sys/module/zswap/parameters/compressor
 # evict cold pages without mem pressure
 echo 1 | sudo tee /sys/module/zswap/parameters/shrinker_enabled
-
-# more aggressive swap
-sudo sysctl -w vm.swappiness=100
-sudo mkswap $SWAP
-sudo swapon $SWAP
 
 # Enable Kernel Same Page Merging (KSM) to look for duplicate pages and keep
 # one copy.
@@ -159,13 +129,9 @@ sudo cat /sys/kernel/mm/ksm/pages_to_scan
 sudo cat /sys/kernel/mm/ksm/sleep_millisecs
 echo 1 | sudo tee /sys/kernel/mm/ksm/run
 
-# Aggressive scanning (more CPU, better merging)
+# Aggressive scanning (more CPU usage, better merging)
 # https://lwn.net/Articles/953141/ recommends 2000-5000.
-#
-# Also,  https://cubepath.com/docs/virtualization-vps/memory-overcommit-in-virtualization
 echo 2000 | sudo tee /sys/kernel/mm/ksm/pages_to_scan
-# echo 10 | sudo tee /sys/kernel/mm/ksm/sleep_millisecs
-
 
 # Check THP status
 echo "THP:"

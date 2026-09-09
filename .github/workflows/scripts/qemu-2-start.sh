@@ -181,7 +181,7 @@ echo "OSv=\"$OSv\"" >> $ENV
 echo "OSNAME=\"$OSNAME\"" >> $ENV
 
 # default vm count for testings
-VMs=2
+VMs=3
 echo "VMs=\"$VMs\"" >> $ENV
 
 # default cpu count for testing vm's
@@ -191,9 +191,8 @@ echo "CPU=\"$CPU\"" >> $ENV
 sudo mkdir -p "/mnt/tests"
 sudo chown -R $(whoami) /mnt/tests
 
-DISK="/dev/zvol/zpool/openzfs"
-sudo zfs create -ps -b 64k -V 80g zpool/openzfs
-while true; do test -b $DISK && break; sleep 1; done
+DISK="/disk"
+echo "DISK=\"$DISK\"" >> $ENV
 
 # We first try to download with 'axel', which is faster than curl, but fallback
 # to curl if that doesn't work.  It is hoped that the curl fallback will get
@@ -250,13 +249,18 @@ if [ ! -z "$URLxz" ] && [ ! -s "$IMG" ] ; then
   curl --fail -LSs -o $IMG $URLxz
 fi
 
-echo "Importing VM image to zvol..."
+echo "Importing VM image..."
 if [ ! -z "$URLxz" ]; then
   xzcat -T0 $IMG | sudo dd of=$DISK bs=4M
 else
   sudo qemu-img dd -f qcow2 -O raw if=$IMG of=$DISK bs=4M
 fi
 rm -f $IMG
+
+# No matter what the input qcow2/raw image, make the output image 12GB
+# to provide extra space for when install updates and build the ZFS
+# code.  12G was chosen since 10G was not enough for FreeBSD.
+sudo truncate -s 12G $DISK
 
 PUBKEY=$(cat ~/.ssh/id_ed25519.pub)
 if [ ${OS:0:7} != "freebsd" ]; then
@@ -315,14 +319,14 @@ sudo virt-install \
   --graphics none \
   --network bridge=virbr0,model=$NIC,mac='52:54:00:83:79:00' \
   --cloud-init user-data=/tmp/user-data \
-  --disk $DISK,bus=virtio,cache=none,format=raw,driver.discard=unmap \
+  --disk $DISK,bus=virtio,cache=writeback,driver.discard=unmap,io=io_uring \
   --import --noautoconsole ${OPTS[0]} ${OPTS[1]} >/dev/null
 
 # Give the VMs hostnames so we don't have to refer to them with
 # hardcoded IP addresses.
 #
 # vm0:          Initial VM we install dependencies and build ZFS on.
-# vm1..2        Testing VMs
+# vm1..3        Testing VMs
 for ((i=0; i<=VMs; i++)); do
   echo "192.168.122.1$i vm$i" | sudo tee -a /etc/hosts
 done
