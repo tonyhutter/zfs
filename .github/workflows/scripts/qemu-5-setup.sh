@@ -38,19 +38,20 @@ case "$OS" in
     ;;
 esac
 
-# create snapshot we can clone later
-sudo zfs snapshot zpool/openzfs@now
-
 # setup the testing vm's
 PUBKEY=$(cat ~/.ssh/id_ed25519.pub)
 
 # start testing VMs
 for ((i=1; i<=VMs; i++)); do
   echo "Creating disk for vm$i..."
-  DISK="/dev/zvol/zpool/vm$i"
+
+  DISK="/disk$i"
+  TESTDISK="/testdisk$i"
+
+  sudo fallocate -l 20G $TESTDISK
+  sudo chmod o+rw $TESTDISK
+
   FORMAT="raw"
-  sudo zfs clone zpool/openzfs@now zpool/vm$i-system
-  sudo zfs create -ps -b 64k -V 64g zpool/vm$i-tests
 
   cat <<EOF > /tmp/user-data
 #cloud-config
@@ -83,6 +84,10 @@ EOF
   sudo virsh net-update default add ip-dhcp-host \
     "<host mac='52:54:00:83:79:0$i' ip='192.168.122.1$i'/>" --live --config
 
+  if [ "$i" == "1" ] ; then
+        cp -a --reflink=auto /disk1 /disk2
+  fi
+
   sudo virt-install \
     --os-variant $OSv \
     --name "vm$i" \
@@ -95,9 +100,10 @@ EOF
     --graphics none \
     --cloud-init user-data=/tmp/user-data \
     --network bridge=virbr0,model=$NIC,mac="52:54:00:83:79:0$i" \
-    --disk $DISK-system,bus=virtio,cache=none,format=$FORMAT,driver.discard=unmap \
-    --disk $DISK-tests,bus=virtio,cache=none,format=$FORMAT,driver.discard=unmap \
+    --disk $DISK,bus=virtio,cache=none,format=$FORMAT,driver.discard=unmap \
+    --disk $TESTDISK,bus=virtio,cache=none,format=$FORMAT,driver.discard=unmap \
     --import --noautoconsole ${OPTS[0]} ${OPTS[1]}
+
 done
 
 # generate some memory stats
