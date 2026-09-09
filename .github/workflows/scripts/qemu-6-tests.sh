@@ -182,6 +182,12 @@ if [ "$1" == "quick" ] ; then
   export RUNFILES="sanity.run"
 fi
 
+# Enable zswap if available
+if [ -e /sys/module/zswap/parameters/enable ] ; then
+  echo 1 | sudo tee /sys/module/zswap/parameters/enable
+  echo "Enabled ZSWAP"
+fi
+
 export PATH="$PATH:/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/sbin:/usr/local/bin"
 case "$OS" in
   freebsd*)

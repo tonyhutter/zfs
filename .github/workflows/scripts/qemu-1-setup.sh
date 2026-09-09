@@ -57,8 +57,6 @@ ssh-keygen -t ed25519 -f ~/.ssh/id_ed25519 -q -N ""
 sudo systemctl stop docker.socket
 sudo systemctl stop multipathd.socket
 
-sudo swapoff -a
-
 # Special case:
 #
 # For reasons unknown, the runner can boot-up with two different block device
@@ -112,49 +110,43 @@ fi
 sudo modprobe loop
 sudo modprobe zfs
 
-if [ -e /dev/disk/cloud/azure_resource-part1 ] ; then
-  echo "We have two 75GB block devices"
-  # partition the disk as needed
-  DISK="/dev/disk/cloud/azure_resource"
-  sudo sgdisk --zap-all $DISK
-  sudo sgdisk -p \
-   -n 1:0:+16G -c 1:"swap" \
-   -n 2:0:0    -c 2:"tests" \
-   $DISK
-  sync
-  sleep 1
+# Enable zswap
+echo 1 | sudo tee /sys/module/zswap/parameters/enabled
+echo "Compressor:"
+sudo cat /sys/module/zswap/parameters/compressor || true
+# echo zstd | sudo tee /sys/module/zswap/parameters/compressor
+# echo lzo | sudo tee /sys/module/zswap/parameters/compressor
 
-  sudo fallocate -l 12G /test.ssd2
-  DISKS="$DISK-part2 /test.ssd2"
+# evict cold pages without mem pressure
+echo 1 | sudo tee /sys/module/zswap/parameters/shrinker_enabled
 
-  SWAP=$DISK-part1
-else
-  echo "We have a single 150GB block device"
-  sudo fallocate -l 72G /test.ssd2
-  SWAP=/swapfile.ssd
-  sudo fallocate -l 16G $SWAP
-  sudo chmod 600 $SWAP
-  DISKS="/test.ssd2"
+# Enable Kernel Same Page Merging (KSM) to look for duplicate pages and keep
+# one copy.
+# echo "KSM Before"
+# sudo cat /sys/kernel/mm/ksm/run
+# echo "pages before / sleep between"
+# sudo cat /sys/kernel/mm/ksm/pages_to_scan
+# sudo cat /sys/kernel/mm/ksm/sleep_millisecs
+# echo 1 | sudo tee /sys/kernel/mm/ksm/run
+
+# Aggressive scanning (more CPU usage, better merging)
+# https://lwn.net/Articles/953141/ recommends 2000-5000.
+# echo 2000 | sudo tee /sys/kernel/mm/ksm/pages_to_scan
+
+# Check THP status
+# echo "THP:"
+# sudo cat /sys/kernel/mm/transparent_hugepage/enabled
+
+# Enable THP
+# echo always | sudo tee /sys/kernel/mm/transparent_hugepage/enabled
+
+# Configure defrag (compaction)
+# echo defer | sudo tee /sys/kernel/mm/transparent_hugepage/defrag
+
+echo "balloon driver (host)"
+ls -l /sys/module/virtio_balloon/ || true
+if [ ! -e /sys/module/virtio_balloon/ ] ; then
+        echo "loading balloon on host"
+        sudo modprobe virtio_balloon 2>&1 || true
+        echo "balloon loaded"
 fi
-
-# swap with same size as RAM (16GiB)
-sudo mkswap $SWAP
-sudo swapon $SWAP
-
-echo "Block devices:"
-lsblk
-
-# adjust zfs module parameter and create pool
-ARC_MIN=$((1024*1024*256))
-ARC_MAX=$((1024*1024*512))
-echo $ARC_MIN | sudo tee /sys/module/zfs/parameters/zfs_arc_min >/dev/null
-echo $ARC_MAX | sudo tee /sys/module/zfs/parameters/zfs_arc_max >/dev/null
-echo 1 | sudo tee /sys/module/zfs/parameters/zvol_use_blk_mq >/dev/null
-sudo zpool create -f -o ashift=12 zpool $DISKS -O relatime=off \
-  -O atime=off -O xattr=sa -O compression=lz4 -O sync=disabled \
-  -O redundant_metadata=none -O mountpoint=/mnt/tests
-echo "Status:"
-zpool status
-
-echo "Last dmesg:"
-sudo dmesg | tail -n 10
