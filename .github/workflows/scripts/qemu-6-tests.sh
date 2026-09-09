@@ -182,6 +182,12 @@ if [ "$1" == "quick" ] ; then
   export RUNFILES="sanity.run"
 fi
 
+echo "MOUNTS"
+mount
+ls -l /tmp 2>&1 || true
+echo "var tmp"
+ls -l /var/tmp 2>&1 || true
+
 export PATH="$PATH:/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/sbin:/usr/local/bin"
 case "$OS" in
   freebsd*)
@@ -216,6 +222,15 @@ case "$OS" in
     fi
     ;;
 esac
+
+echo "DF ----"
+df -h
+echo "DF /var/tmp"
+df /var/tmp
+echo "DF tmp"
+df /tmp
+echo "BTRFS"
+sudo btrfs fi us / || true
 
 # Distribution-specific settings.
 case "$OS" in

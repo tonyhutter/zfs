@@ -191,9 +191,11 @@ echo "CPU=\"$CPU\"" >> $ENV
 sudo mkdir -p "/mnt/tests"
 sudo chown -R $(whoami) /mnt/tests
 
-DISK="/dev/zvol/zpool/openzfs"
-sudo zfs create -ps -b 64k -V 80g zpool/openzfs
-while true; do test -b $DISK && break; sleep 1; done
+# VM0 disk
+df -h
+DISK="/disk1"
+sudo touch /disk1
+sudo chmod o+rw /disk1
 
 # We first try to download with 'axel', which is faster than curl, but fallback
 # to curl if that doesn't work.  It is hoped that the curl fallback will get
@@ -383,3 +385,5 @@ if [ ${OS:0:6} == "alpine" ]; then
   ssh zfs@vm0 "sudo apk add --upgrade apk-tools"
   ssh zfs@vm0 "sudo apk upgrade --available"
 fi
+
+

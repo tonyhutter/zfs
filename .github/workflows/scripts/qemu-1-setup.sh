@@ -114,27 +114,12 @@ sudo modprobe zfs
 
 if [ -e /dev/disk/cloud/azure_resource-part1 ] ; then
   echo "We have two 75GB block devices"
-  # partition the disk as needed
-  DISK="/dev/disk/cloud/azure_resource"
-  sudo sgdisk --zap-all $DISK
-  sudo sgdisk -p \
-   -n 1:0:+16G -c 1:"swap" \
-   -n 2:0:0    -c 2:"tests" \
-   $DISK
-  sync
-  sleep 1
-
-  sudo fallocate -l 12G /test.ssd2
-  DISKS="$DISK-part2 /test.ssd2"
-
-  SWAP=$DISK-part1
+  # Use one of the disks as swap
+  SWAP="/dev/disk/cloud/azure_resource"
 else
-  echo "We have a single 150GB block device"
-  sudo fallocate -l 72G /test.ssd2
   SWAP=/swapfile.ssd
   sudo fallocate -l 16G $SWAP
   sudo chmod 600 $SWAP
-  DISKS="/test.ssd2"
 fi
 
 # swap with same size as RAM (16GiB)
@@ -143,18 +128,3 @@ sudo swapon $SWAP
 
 echo "Block devices:"
 lsblk
-
-# adjust zfs module parameter and create pool
-ARC_MIN=$((1024*1024*256))
-ARC_MAX=$((1024*1024*512))
-echo $ARC_MIN | sudo tee /sys/module/zfs/parameters/zfs_arc_min >/dev/null
-echo $ARC_MAX | sudo tee /sys/module/zfs/parameters/zfs_arc_max >/dev/null
-echo 1 | sudo tee /sys/module/zfs/parameters/zvol_use_blk_mq >/dev/null
-sudo zpool create -f -o ashift=12 zpool $DISKS -O relatime=off \
-  -O atime=off -O xattr=sa -O compression=lz4 -O sync=disabled \
-  -O redundant_metadata=none -O mountpoint=/mnt/tests
-echo "Status:"
-zpool status
-
-echo "Last dmesg:"
-sudo dmesg | tail -n 10
