@@ -107,6 +107,15 @@ export -f do_builtin_build
 # called directly on the runner
 if [ -z ${1:-} ]; then
   cd "/var/tmp"
+
+  # Record memory and CPU usage
+  while true; do
+    echo -n "$(date '+%Y-%m-%d %H:%M:%S') $(free -m | awk '/Mem:/{print}')" >> monitor.txt
+    cat /proc/loadavg | awk '{print " "$1}' >> monitor.txt
+    sleep 1
+  done &
+  pid=$!
+
   source env.txt
   SSH=$(which ssh)
   TESTS='$HOME/zfs/.github/workflows/scripts/qemu-6-tests.sh'
@@ -151,6 +160,10 @@ if [ -z ${1:-} ]; then
     # It stays on stderr: a dead reader means output was lost.
     kill $pid || true
   done
+
+  cat monitor.txt
+
+  kill -9 $pid
 
   exit 0
 fi
