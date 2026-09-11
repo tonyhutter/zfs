@@ -123,8 +123,41 @@ else
 fi
 
 # swap with same size as RAM (16GiB)
+echo 1 | sudo tee /sys/module/zswap/parameters/enabled
+echo "Compressor:"
+sudo cat /sys/module/zswap/parameters/compressor || true
+echo zstd | sudo tee /sys/module/zswap/parameters/compressor
+# evict cold pages without mem pressure
+echo 1 | sudo tee /sys/module/zswap/parameters/shrinker_enabled
+
+# more aggressive swap
+sudo sysctl -w vm.swappiness=100
 sudo mkswap $SWAP
 sudo swapon $SWAP
 
-echo "Block devices:"
-lsblk
+# Enable Kernel Same Page Merging (KSM) to look for duplicate pages and keep
+# one copy.
+echo "KSM Before"
+sudo cat /sys/kernel/mm/ksm/run
+echo "pages before / sleep between"
+sudo cat /sys/kernel/mm/ksm/pages_to_scan
+sudo cat /sys/kernel/mm/ksm/sleep_millisecs
+echo 1 | sudo tee /sys/kernel/mm/ksm/run
+
+# Aggressive scanning (more CPU, better merging)
+# https://lwn.net/Articles/953141/ recommends 2000-5000.
+#
+# Also,  https://cubepath.com/docs/virtualization-vps/memory-overcommit-in-virtualization
+echo 2000 | sudo tee /sys/kernel/mm/ksm/pages_to_scan
+# echo 10 | sudo tee /sys/kernel/mm/ksm/sleep_millisecs
+
+
+# Check THP status
+echo "THP:"
+sudo cat /sys/kernel/mm/transparent_hugepage/enabled
+
+# Enable THP
+echo always | sudo tee /sys/kernel/mm/transparent_hugepage/enabled
+
+# Configure defrag (compaction)
+echo defer | sudo tee /sys/kernel/mm/transparent_hugepage/defrag
