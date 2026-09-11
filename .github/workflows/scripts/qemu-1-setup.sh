@@ -138,6 +138,15 @@ else
 fi
 
 # swap with same size as RAM (16GiB)
+echo 1 | sudo tee /sys/module/zswap/parameters/enabled
+echo "Compressor:"
+sudo cat /sys/module/zswap/parameters/compressor || true
+echo zstd | sudo tee /sys/module/zswap/parameters/compressor
+# evict cold pages without mem pressure
+echo 1 | sudo tee /sys/module/zswap/parameters/shrinker_enabled
+
+# more aggressive swap
+sudo sysctl -w vm.swappiness=100
 sudo mkswap $SWAP
 sudo swapon $SWAP
 
