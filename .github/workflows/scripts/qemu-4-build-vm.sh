@@ -9,6 +9,7 @@
 #               [--patch-level NUM][--poweroff][--release][--repo][--tarball]
 #
 # OS:           OS name like 'fedora41'
+# --akmod:      When building packages, also build akmods.
 # --custom-branch: When building packages, checkout this version of ZFS to
 #                  build, but use the current CI scripts to do it.
 # --enable-debug:  Build RPMs with '--enable-debug' (for testing)
@@ -31,6 +32,7 @@ REPO=""
 TARBALL=""
 CUSTOM_BRANCH=""
 PREV_BRANCH=""
+AKMOD=""
 
 cleanup() {
   if [ -n "$PREV_BRANCH" ] ; then
@@ -40,6 +42,10 @@ cleanup() {
 
 while [[ $# -gt 0 ]]; do
   case $1 in
+    --akmod)
+      AKMOD=1
+      shift
+      ;;
     --custom-branch)
       CUSTOM_BRANCH="$2"
       # If the user specifies a custom tag/branch to build, and the build
@@ -163,6 +169,8 @@ function copy_rpms_to_repo {
   mkdir -p $dst
   mv zfs-release*.rpm $dst || true
 
+  echo "Files"
+  ls -l
   # Copy source RPMs
   mkdir -p $dst/SRPMS
   cp $(ls *.src.rpm) $dst/SRPMS/
@@ -178,6 +186,13 @@ function copy_rpms_to_repo {
     # Copy dkms+userspace
     mkdir -p $dst/x86_64
     cp $(ls *.rpm | grep -Ev 'src.rpm|kmod|debuginfo') $dst/x86_64
+  fi
+
+  if [ -n "$AKMOD" ] ; then
+    # Copy akmods+userspace
+    mkdir -p $dst/akmod/x86_64/debug
+    cp $(ls *.rpm | grep -Ev 'src.rpm|dkms|debuginfo') $dst/akmod/x86_64
+    cp *debuginfo*.rpm $dst/akmod/x86_64/debug
   fi
 
   # Copy debug
@@ -261,11 +276,18 @@ function rpm_build_and_install() {
     echo "##[endgroup]"
   fi
 
+  if [ -n "$AKMOD" ] ; then
+    echo "##[group]AKMODs"
+    sudo dnf -y install akmods
+    make rpm-akmod srpm-akmod
+    echo "##[endgroup]"
+  fi
+
   if [ -n "$REPO" ] ; then
     echo "Skipping install since we're only building RPMs and nothing else"
   else
     echo "##[group]Install"
-    run sudo dnf -y --nobest install $(ls *.rpm | grep -Ev 'dkms|src.rpm')
+    run sudo dnf -y --nobest install $(ls *.rpm | grep -Ev 'dkms|src.rpm|akmod')
     echo "##[endgroup]"
   fi
 

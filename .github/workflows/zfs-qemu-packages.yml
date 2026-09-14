@@ -52,6 +52,11 @@ on:
         required: false
         default: false
         description: "(optional) do version lookup only on repo test"
+      akmod:
+        type: boolean
+        required: false
+        default: false
+        description: "(optional) also build akmods when building RPMs"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
@@ -101,6 +106,10 @@ jobs:
                 fi
                 if [ -n "${{ github.event.inputs.custom_branch }}" ] ; then
                         EXTRA+=" --custom-branch ${{ github.event.inputs.custom_branch }}"
+                fi
+
+                if [ -n "${{ github.event.inputs.akmod }}" ] ; then
+                        EXTRA+=" --akmod"
                 fi
 
                 .github/workflows/scripts/qemu-4-build.sh $EXTRA \
