@@ -14,9 +14,6 @@ PID=$(pidof /usr/bin/qemu-system-x86_64)
 tail --pid=$PID -f /dev/null
 sudo virsh undefine --nvram openzfs
 
-# cpu pinning
-CPUSET=("0,1" "2,3" "4,5")
-
 # additional options for virt-install
 OPTS[0]=""
 OPTS[1]=""
@@ -96,7 +93,6 @@ EOF
     --cpu host-passthrough \
     --virt-type=kvm --hvm \
     --vcpus=$CPU,sockets=1 \
-    --cpuset=${CPUSET[$((i-1))]} \
     --memory $((1024*RAM)) \
     --memballoon model=virtio \
     --graphics none \
