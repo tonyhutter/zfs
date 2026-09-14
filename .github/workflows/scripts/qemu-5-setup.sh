@@ -15,7 +15,7 @@ tail --pid=$PID -f /dev/null
 sudo virsh undefine --nvram openzfs
 
 # cpu pinning
-CPUSET=("0,1" "2,3")
+CPUSET=("0,1" "2,3" "4,5")
 
 # additional options for virt-install
 OPTS[0]=""
@@ -48,7 +48,7 @@ for ((i=1; i<=VMs; i++)); do
   DISK="/disk$i"
   TESTDISK="/testdisk$i"
 
-  sudo fallocate -l 20G $TESTDISK
+  sudo qemu-img create -f qcow2 -o compression_type=zstd $TESTDISK 19G
   sudo chmod o+rw $TESTDISK
 
   FORMAT="raw"
@@ -85,7 +85,9 @@ EOF
     "<host mac='52:54:00:83:79:0$i' ip='192.168.122.1$i'/>" --live --config
 
   if [ "$i" == "1" ] ; then
-        sudo cp -a --reflink=auto /disk1 /disk2
+        for ((j=2; j<=$VMs; j++)); do
+           sudo cp -a --reflink=auto /disk1 /disk$j
+        done
   fi
 
   sudo virt-install \
@@ -101,7 +103,7 @@ EOF
     --cloud-init user-data=/tmp/user-data \
     --network bridge=virbr0,model=$NIC,mac="52:54:00:83:79:0$i" \
     --disk $DISK,bus=virtio,cache=none,format=$FORMAT,driver.discard=unmap \
-    --disk $TESTDISK,bus=virtio,cache=none,format=$FORMAT,driver.discard=unmap \
+    --disk $TESTDISK,bus=virtio,cache=none,format=qcow2,driver.discard=unmap \
     --import --noautoconsole ${OPTS[0]} ${OPTS[1]}
 
 done

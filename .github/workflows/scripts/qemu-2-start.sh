@@ -181,7 +181,7 @@ echo "OSv=\"$OSv\"" >> $ENV
 echo "OSNAME=\"$OSNAME\"" >> $ENV
 
 # default vm count for testings
-VMs=2
+VMs=3
 echo "VMs=\"$VMs\"" >> $ENV
 
 # default cpu count for testing vm's
@@ -324,7 +324,7 @@ sudo virt-install \
 # hardcoded IP addresses.
 #
 # vm0:          Initial VM we install dependencies and build ZFS on.
-# vm1..2        Testing VMs
+# vm1..3        Testing VMs
 for ((i=0; i<=VMs; i++)); do
   echo "192.168.122.1$i vm$i" | sudo tee -a /etc/hosts
 done
