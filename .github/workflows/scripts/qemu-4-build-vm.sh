@@ -38,6 +38,12 @@ cleanup() {
   fi
 }
 
+echo BEGIN
+sudo mount
+sudo lsblk
+echo "WHOAMI: $(whoami)"
+git config --global --add safe.directory /home/zfs/zfs
+
 while [[ $# -gt 0 ]]; do
   case $1 in
     --custom-branch)

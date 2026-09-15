@@ -184,18 +184,26 @@ echo "OSNAME=\"$OSNAME\"" >> $ENV
 VMs=4
 echo "VMs=\"$VMs\"" >> $ENV
 
+
 # default cpu count for testing vm's
 CPU=2
 echo "CPU=\"$CPU\"" >> $ENV
+
+BUILDDISK=/builddisk
+echo "BUILDDISK=\"$BUILDDISK\"" >> $ENV
 
 sudo mkdir -p "/mnt/tests"
 sudo chown -R $(whoami) /mnt/tests
 
 # VM0 disk
 df -h
-DISK="/disk1"
-sudo touch /disk1
-sudo chmod o+rw /disk1
+DISK="/disk"
+sudo touch $DISK
+sudo chmod o+rw $DISK
+
+echo "DISK=\"$DISK\"" >> $ENV
+
+
 
 # We first try to download with 'axel', which is faster than curl, but fallback
 # to curl if that doesn't work.  It is hoped that the curl fallback will get
@@ -306,6 +314,9 @@ fi
 sudo virsh net-update default add ip-dhcp-host \
   "<host mac='52:54:00:83:79:00' ip='192.168.122.10'/>" --live --config
 
+sudo qemu-img create -f qcow2 -o compression_type=zstd $BUILDDISK 2G
+sudo chmod o+rw $BUILDDISK
+
 sudo virt-install \
   --os-variant $OSv \
   --name "openzfs" \
@@ -318,6 +329,7 @@ sudo virt-install \
   --network bridge=virbr0,model=$NIC,mac='52:54:00:83:79:00' \
   --cloud-init user-data=/tmp/user-data \
   --disk $DISK,bus=virtio,cache=none,format=raw,driver.discard=unmap \
+  --disk $BUILDDISK,bus=virtio,cache=none,format=qcow2,driver.discard=unmap,serial=BUILDDISK \
   --import --noautoconsole ${OPTS[0]} ${OPTS[1]} >/dev/null
 
 # Give the VMs hostnames so we don't have to refer to them with

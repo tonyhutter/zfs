@@ -370,6 +370,29 @@ case "$1" in
     ;;
 esac
 
+echo "Formatting build disk.  We will build ZFS on this disk."
+find /dev/disk/by-id
+# We gave the disk a serial number of "BUILDDISK" earlier
+builddisk="$(ls /dev/disk/by-id/*BUILDDISK* | head -n 1)"
+echo "Build disk: $builddisk"
+sudo mkfs.xfs -fq $builddisk
+sudo mkdir /home/zfs/zfs
+sudo chown zfs:zfs /home/zfs/zfs
+
+echo "$builddisk /home/zfs/zfs xfs defaults,noatime 0 0" | sudo tee -a /etc/fstab
+echo "Testing mount"
+sudo mount -a
+sudo chmod -R 777 /home/zfs/zfs
+
+
+echo "LS"
+ls -l /home
+ls -l /home/zfs
+echo "home zfs ..."
+ls -l /home/zfs/zfs
+echo "mount"
+sudo mount
+
 # reset cloud-init configuration and poweroff
 sudo cloud-init clean --logs
 if [ "$POWEROFF" == "1" ] ; then

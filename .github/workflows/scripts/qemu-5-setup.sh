@@ -24,14 +24,14 @@ case "$OS" in
     RAM=6
     ;;
   debian13)
-    RAM=8
+    RAM=4
     # Boot Debian 13 with uefi=on and secureboot=off (ZFS Kernel Module not signed)
     OPTS[0]="--boot"
     OPTS[1]="firmware=efi,firmware.feature0.name=secure-boot,firmware.feature0.enabled=no"
     ;;
   *)
     # Linux needs more memory, but can be optimized to share it via KSM
-    RAM=8
+    RAM=4
     ;;
 esac
 
@@ -41,14 +41,6 @@ PUBKEY=$(cat ~/.ssh/id_ed25519.pub)
 # start testing VMs
 for ((i=1; i<=VMs; i++)); do
   echo "Creating disk for vm$i..."
-
-  DISK="/disk$i"
-  TESTDISK="/testdisk$i"
-
-  sudo qemu-img create -f qcow2 -o compression_type=zstd $TESTDISK 19G
-  sudo chmod o+rw $TESTDISK
-
-  FORMAT="raw"
 
   cat <<EOF > /tmp/user-data
 #cloud-config
@@ -81,11 +73,21 @@ EOF
   sudo virsh net-update default add ip-dhcp-host \
     "<host mac='52:54:00:83:79:0$i' ip='192.168.122.1$i'/>" --live --config
 
-  if [ "$i" == "1" ] ; then
-        for ((j=2; j<=$VMs; j++)); do
-           sudo cp -a --reflink=auto /disk1 /disk$j
-        done
-  fi
+  THIS_DISK=/disk$i
+  THIS_BUILDDISK=/builddisk$i
+  TESTDISK=/testdisk$i
+  echo "DISK $DISK, THIS_DISK $THIS_DISK, THIS_BUILDDISK=$THIS_BUILDDISK"
+  # Each VM gets a snapshot of the OS disk and build disk to save space
+  sudo qemu-img create -f qcow2 -o backing_file=$DISK $THIS_DISK
+  echo "file is:"
+  sudo file $THIS_DISK
+  sudo ls -l $THIS_DISK
+  echo "info"
+  sudo qemu-info $THIS_DISK
+  sudo qemu-img create -f qcow2 -o backing_file=$BUILDDISK $THIS_BUILDDISK
+
+  # Each VM gets their own separate test data disk
+  sudo qemu-img create -f qcow2 -o compression_type=zstd $TESTDISK 18G
 
   sudo virt-install \
     --os-variant $OSv \
@@ -98,8 +100,9 @@ EOF
     --graphics none \
     --cloud-init user-data=/tmp/user-data \
     --network bridge=virbr0,model=$NIC,mac="52:54:00:83:79:0$i" \
-    --disk $DISK,bus=virtio,cache=none,format=$FORMAT,driver.discard=unmap \
+    --disk $THIS_DISK,bus=virtio,cache=none,format=qcow2,driver.discard=unmap \
     --disk $TESTDISK,bus=virtio,cache=none,format=qcow2,driver.discard=unmap \
+    --disk $THIS_BUILDDISK,bus=virtio,cache=none,format=qcow2,driver.discard=unmap,serial=BUILDDISK \
     --import --noautoconsole ${OPTS[0]} ${OPTS[1]}
 
 done
