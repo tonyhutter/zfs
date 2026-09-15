@@ -38,6 +38,11 @@ esac
 # setup the testing vm's
 PUBKEY=$(cat ~/.ssh/id_ed25519.pub)
 
+# Convert our source disk from RAW to qcow2 so we can snapshot it
+sudo qemu-img convert -f raw -O qcow2 -c -o compression_type=zstd -p $DISK ${DISK}.qcow2
+sudo rm -f $DISK
+DISK=${DISK}.qcow2
+
 # start testing VMs
 for ((i=1; i<=VMs; i++)); do
   echo "Creating disk for vm$i..."
@@ -77,14 +82,20 @@ EOF
   THIS_BUILDDISK=/builddisk$i
   TESTDISK=/testdisk$i
   echo "DISK $DISK, THIS_DISK $THIS_DISK, THIS_BUILDDISK=$THIS_BUILDDISK"
+  echo "disk infoo"
+  sudo file $DISK
+  sudo ls -l $DISK
+  echo "info"
+  sudo qemu-info $THIS_DISK
+  s
   # Each VM gets a snapshot of the OS disk and build disk to save space
-  sudo qemu-img create -f qcow2 -o backing_file=$DISK $THIS_DISK
+  sudo qemu-img create -f qcow2 -o backing_file=$DISK -F qcow2 $THIS_DISK
   echo "file is:"
   sudo file $THIS_DISK
   sudo ls -l $THIS_DISK
   echo "info"
   sudo qemu-info $THIS_DISK
-  sudo qemu-img create -f qcow2 -o backing_file=$BUILDDISK $THIS_BUILDDISK
+  sudo qemu-img create -f qcow2 -o backing_file=$BUILDDISK -F qcow2 $THIS_BUILDDISK
 
   # Each VM gets their own separate test data disk
   sudo qemu-img create -f qcow2 -o compression_type=zstd $TESTDISK 18G

@@ -184,7 +184,6 @@ echo "OSNAME=\"$OSNAME\"" >> $ENV
 VMs=3
 echo "VMs=\"$VMs\"" >> $ENV
 
-
 # default cpu count for testing vm's
 CPU=2
 echo "CPU=\"$CPU\"" >> $ENV
@@ -198,9 +197,6 @@ sudo chown -R $(whoami) /mnt/tests
 # VM0 disk
 df -h
 DISK="/disk"
-sudo touch $DISK
-sudo chmod o+rw $DISK
-
 echo "DISK=\"$DISK\"" >> $ENV
 
 
@@ -317,6 +313,7 @@ sudo virsh net-update default add ip-dhcp-host \
 sudo qemu-img create -f qcow2 -o compression_type=zstd $BUILDDISK 2G
 sudo chmod o+rw $BUILDDISK
 
+
 sudo virt-install \
   --os-variant $OSv \
   --name "openzfs" \
@@ -328,7 +325,7 @@ sudo virt-install \
   --graphics none \
   --network bridge=virbr0,model=$NIC,mac='52:54:00:83:79:00' \
   --cloud-init user-data=/tmp/user-data \
-  --disk $DISK,bus=virtio,cache=none,format=raw,driver.discard=unmap \
+  --disk $DISK,bus=virtio,cache=none,driver.discard=unmap \
   --disk $BUILDDISK,bus=virtio,cache=none,format=qcow2,driver.discard=unmap,serial=BUILDDISK \
   --import --noautoconsole ${OPTS[0]} ${OPTS[1]} >/dev/null
 
