@@ -181,7 +181,7 @@ echo "OSv=\"$OSv\"" >> $ENV
 echo "OSNAME=\"$OSNAME\"" >> $ENV
 
 # default vm count for testings
-VMs=3
+VMs=1
 echo "VMs=\"$VMs\"" >> $ENV
 
 # default cpu count for testing vm's
