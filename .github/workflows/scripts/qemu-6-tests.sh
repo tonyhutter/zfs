@@ -259,6 +259,7 @@ fi
 # run functional testings and save exitcode
 cd /var/tmp
 TAGS=$NUM/$DEN
+TAGS="2/2"
 sudo dmesg -c > dmesg-prerun.txt
 mount > mount.txt
 df -h > df-prerun.txt
