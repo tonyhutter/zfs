@@ -106,18 +106,30 @@ export -f do_builtin_build
 
 # called directly on the runner
 if [ -z ${1:-} ]; then
+  pwd
+  THIS_DIR=$(pwd)
+  ls -l
   cd "/var/tmp"
   source env.txt
   SSH=$(which ssh)
+ 
   TESTS='$HOME/zfs/.github/workflows/scripts/qemu-6-tests.sh'
   date "+%s" > /tmp/tsstart
 
   # Start recording cpu/memory/swap/disk usage stats on both this
   # host and all the VMs.
-  $HOME/zfs/.github/workflows/scripts/all-ci-stats.sh $VMs 1 &
+  #
+  # Get directory this script was run from.  all-ci-stats.sh will
+  # also be in there.
+
+  script=/home/runner/work/zfs/zfs/.github/workflows/scripts/all-ci-stats.sh
+  
+  echo "bash: ${BASH_SOURCE[0]}"
+  
+  eval $script $VMs 1 &
   stats_pid=$!
 
-  for ((i=1; i<=VMs; i++)); do
+   for ((i=1; i<=VMs; i++)); do
     echo 0 > /tmp/ctr-vm${i}
     IP="192.168.122.1$i"
 
@@ -254,7 +266,7 @@ fi
 # run functional testings and save exitcode
 cd /var/tmp
 TAGS=$NUM/$DEN
-TAGS=$NUM/10
+
 sudo dmesg -c > dmesg-prerun.txt
 mount > mount.txt
 df -h > df-prerun.txt

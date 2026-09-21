@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 # Monitor stats from VMs, and our own stats
 #
 # USAGE:
@@ -10,19 +11,22 @@ seconds=$2
 
 title="date CPU MemTotal MemFree SwapTotal SwapFree DiskTotal DiskFree"
 echo "$title" > /var/tmp/runner_stats.txt
-for i in $VMs ; do
+for i in $(seq 1 $VMs) ; do
 	echo "$title" > /var/tmp/vm${i}_stats.txt
 done
 
+# The directory this script is run from also contains ci-stats.sh
+SCRIPTS_DIR=$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")
+
 while [ 1 ]  ; do
-	# Write our own stats
-	./ci-stats.sh >> /var/tmp/runner_stats.txt
+	# Write host stats
+	$SCRIPTS_DIR/ci-stats.sh >> /var/tmp/runner_stats.txt
 	
 	# Get and write VM stats.  It's ok if a VM doesn't respond, since it
 	# could have crashed.
-	for vm in "fedora42" "fedora43" ; do
-		ssh -o ConnectTimeout=1 hutter@$vm \
-		    $HOME/zfs/.github/workflows/scripts/ci-stats.sh 2>/dev/null >> /var/tmp/vm${i}_stats.txt || true
+	for i in $(seq 1 $VMs) ; do
+		ssh -o ConnectTimeout=1 zfs@vm$i \
+		    '$HOME/zfs/.github/workflows/scripts/ci-stats.sh' 2>/dev/null >> /var/tmp/vm${i}_stats.txt || true
 	done
 	sleep $seconds
 	wait

@@ -4,8 +4,10 @@
 # UNIX_timestamp CPU_usage% MemTotal MemAvailable SwapTotal SwapFree DiskSize DiskFree
 #
 # Mem/swap/disk sizes in MB
-#
-awk 'BEGIN {printf "%s ", systime()}'
+
+# Use the date format from ZTS reporting, so we can correlate our samples to
+# the ZTS test times in the graph.
+echo -n "$(date +%T.%6N)"
 if uname | grep -qi bsd ; then 
 	# Load average
 	load=$(sysctl -n vm.loadavg | grep -Eo -m 1 '[0-9\.]+' | head -n 1)
