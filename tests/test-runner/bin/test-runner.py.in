@@ -432,7 +432,7 @@ echo "##### /proc/sysrq-trigger stack #####"
         stdout/stderr/merged in its own file.
         """
 
-        timeprefix = datetime.now().strftime('[%FT%T.%f] ')
+        timeprefix = datetime.now().strftime('[%T.%f] ')
 
         logname = getpwuid(os.getuid()).pw_name
         rer = ''

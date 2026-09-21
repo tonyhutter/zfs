@@ -46,7 +46,7 @@ cat /etc/apt/apt-mirrors.txt
 # install needed packages
 export DEBIAN_FRONTEND="noninteractive"
 sudo apt-get -y update
-sudo apt-get install -y axel cloud-image-utils daemonize guestfs-tools \
+sudo apt-get install -y axel cloud-image-utils daemonize gnuplot guestfs-tools \
   virt-manager linux-modules-extra-$(uname -r) zfsutils-linux
 
 # generate ssh keys

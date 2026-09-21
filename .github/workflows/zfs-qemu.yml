@@ -147,12 +147,23 @@ jobs:
       timeout-minutes: 10
       run: .github/workflows/scripts/qemu-7-prepare.sh
 
-    - uses: actions/upload-artifact@v7
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v7
       id: artifact-upload
       if: always()
       with:
         name: Logs-functional-${{ matrix.os }}
         path: /tmp/qemu-${{ matrix.os }}.tar.bz2
+        archive: false
+        if-no-files-found: ignore
+
+    - name: Upload runner graph
+      uses: actions/upload-artifact@v7
+      id: artifact-upload-graph
+      if: always()
+      with:
+        name: runner.svg
+        path: /tmp/runner.svg
         archive: false
         if-no-files-found: ignore
 

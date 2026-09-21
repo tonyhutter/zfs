@@ -49,6 +49,13 @@ done
 cp -f /var/tmp/*.txt $RESPATH || true
 cd $RESPATH
 
+# Generate graphs from *_stat.txt and vm*log.txt files
+echo "Making graphs"
+$BASE/.github/workflows/scripts/make_graph.sh \
+        $BASE/.github/workflows/scripts/plot.gp
+# Special case: we want the runner graph uploaded as a separate artifact
+cp runner.svg /tmp
+
 # prepare result files for summary
 for ((i=1; i<=VMs; i++)); do
 
