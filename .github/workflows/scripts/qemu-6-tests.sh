@@ -109,8 +109,15 @@ if [ -z ${1:-} ]; then
   cd "/var/tmp"
   source env.txt
   SSH=$(which ssh)
+
   TESTS='$HOME/zfs/.github/workflows/scripts/qemu-6-tests.sh'
   date "+%s" > /tmp/tsstart
+
+  # Start recording cpu/memory/swap/disk usage stats on both this
+  # host and all the VMs.  Take samples every second.
+  script=/home/runner/work/zfs/zfs/.github/workflows/scripts/all-ci-stats.sh
+  eval $script $VMs 1 &
+  stats_pid=$!
 
   for ((i=1; i<=VMs; i++)); do
     echo 0 > /tmp/ctr-vm${i}
@@ -152,6 +159,7 @@ if [ -z ${1:-} ]; then
     kill $pid || true
   done
 
+  kill $stats_pid || true
   exit 0
 fi
 
@@ -248,13 +256,16 @@ fi
 # run functional testings and save exitcode
 cd /var/tmp
 TAGS=$NUM/$DEN
+
 sudo dmesg -c > dmesg-prerun.txt
 mount > mount.txt
 df -h > df-prerun.txt
+vmstat -s > vmstat-prerun.txt
 RV=0
 $TDIR/zfs-tests.sh -vKO -s 3GB -T $TAGS || RV=$?
 
 df -h > df-postrun.txt
+vmstat -s > vmstat-postrun.txt
 echo $RV > tests-exitcode.txt
 sync
 exit 0
