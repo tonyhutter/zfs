@@ -112,6 +112,11 @@ if [ -z ${1:-} ]; then
   TESTS='$HOME/zfs/.github/workflows/scripts/qemu-6-tests.sh'
   date "+%s" > /tmp/tsstart
 
+  # Start recording cpu/memory/swap/disk usage stats on both this
+  # host and all the VMs.
+  $HOME/zfs/.github/workflows/scripts/all-ci-stats.sh $VMs 1 &
+  stats_pid=$!
+
   for ((i=1; i<=VMs; i++)); do
     echo 0 > /tmp/ctr-vm${i}
     IP="192.168.122.1$i"
@@ -152,6 +157,7 @@ if [ -z ${1:-} ]; then
     kill $pid || true
   done
 
+  kill $stats_pid || true
   exit 0
 fi
 
@@ -248,6 +254,7 @@ fi
 # run functional testings and save exitcode
 cd /var/tmp
 TAGS=$NUM/$DEN
+TAGS=$NUM/10
 sudo dmesg -c > dmesg-prerun.txt
 mount > mount.txt
 df -h > df-prerun.txt
