@@ -2084,7 +2084,6 @@ zfs_fini(void)
 	zfsctl_fini();
 }
 
-#if defined(_KERNEL)
 EXPORT_SYMBOL(zfs_suspend_fs);
 EXPORT_SYMBOL(zfs_resume_fs);
 EXPORT_SYMBOL(zfs_set_version);
@@ -2099,4 +2098,3 @@ EXPORT_SYMBOL(zfs_statvfs);
 EXPORT_SYMBOL(zfs_vget);
 EXPORT_SYMBOL(zfs_prune);
 EXPORT_SYMBOL(zfs_set_default_quota);
-#endif
