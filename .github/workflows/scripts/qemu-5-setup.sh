@@ -74,11 +74,14 @@ EOF
   THIS_DISK=/var/lib/libvirt/images/disk$i
   TESTDISK=/var/lib/libvirt/images/testdisk$i
 
+  truncate -s 3G /ztsdisk1_vm$i /ztsdisk2_vm$i /ztsidisk3_vm$i
+
   # Each VM gets a snapshot of the OS disk and build disk to save space
   sudo qemu-img create -f qcow2 -o backing_file=$DISK -F qcow2 $THIS_DISK
 
-  # Each VM gets their own separate test data disk
-  sudo qemu-img create -f qcow2 -o compression_type=zstd $TESTDISK 18G
+  # Each VM gets their own separate test data disk, and three disks for ZTS
+  # (which are in place of using the normal 3 loopback disks)
+  sudo qemu-img create -f qcow2 -o compression_type=zstd $TESTDISK 11G
   echo "libvirt"
   sudo ls -aclh /var/lib/libvirt/images
   sudo virt-install \
@@ -94,6 +97,9 @@ EOF
     --network bridge=virbr0,model=$NIC,mac="52:54:00:83:79:0$i" \
     --disk $THIS_DISK,bus=virtio,cache=writeback,format=qcow2,driver.discard=unmap,io=io_uring \
     --disk $TESTDISK,bus=virtio,cache=writeback,format=qcow2,driver.discard=unmap,io=io_uring \
+    --disk /ztsdisk1_vm$i,bus=virtio,cache=writeback,format=raw,driver.discard=unmap,io=io_uring,serial=zts1 \
+    --disk /ztsdisk2_vm$i,bus=virtio,cache=writeback,format=raw,driver.discard=unmap,io=io_uring,serial=zts2 \
+    --disk /ztsdisk3_vm$i,bus=virtio,cache=writeback,format=raw,driver.discard=unmap,io=io_uring,serial=zts3 \
     --import --noautoconsole ${OPTS[0]} ${OPTS[1]} || true
 
 done

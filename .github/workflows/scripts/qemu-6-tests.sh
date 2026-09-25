@@ -269,7 +269,9 @@ sudo dmesg -c > dmesg-prerun.txt
 mount > mount.txt
 df -h > df-prerun.txt
 RV=0
-$TDIR/zfs-tests.sh -vKO -s 3GB -T $TAGS || RV=$?
+DISKS=$(ls /dev/disk/by-id/*zts*)
+export DISKS
+$TDIR/zfs-tests.sh -vKO -T $TAGS || RV=$?
 
 df -h > df-postrun.txt
 echo $RV > tests-exitcode.txt
