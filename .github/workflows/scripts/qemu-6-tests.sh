@@ -269,7 +269,27 @@ sudo dmesg -c > dmesg-prerun.txt
 mount > mount.txt
 df -h > df-prerun.txt
 RV=0
-$TDIR/zfs-tests.sh -vKO -s 3GB -T $TAGS || RV=$?
+
+# Get all our test disk block devices.  These are passed up from the runner.
+# This is more efficient that the normal "create 3 loopback devices" method
+# that ZTS uses by default.  The disks show as:
+#
+# /dev/disk/by-id/virtio-zts1
+# /dev/disk/by-id/virtio-zts2
+# /dev/disk/by-id/virtio-zts3
+#
+# The DISKS value that ZTS expects assumes names like 'sda' 'sdb' 'sdc' rather
+# than the full path to the disk.  You'll see tests do things like:
+# zpool create "/dev/$DISK1" ... which break with full paths.  To get around
+# this, resolve our /dev/disk/by-id/virtio-zts* disks to their underlying 'vd*'
+# disk names.
+DISKS=""
+for i in $(ls /dev/disk/by-id/*zts* | xargs readlink -f) ; do
+        DISKS+=" $(basename $i)"
+done
+
+export DISKS
+$TDIR/zfs-tests.sh -vKO -T $TAGS || RV=$?
 
 df -h > df-postrun.txt
 echo $RV > tests-exitcode.txt

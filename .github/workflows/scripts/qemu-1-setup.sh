@@ -25,7 +25,9 @@ sudo apt-get -y autoremove
 # Next, remove unneeded files in /usr.  This frees up an additional 25GB.
 sudo rm -fr /usr/local/lib/android /usr/share/dotnet /usr/local/.ghcup \
         /usr/share/swift /usr/local/share/powershell /usr/local/julia* \
-        /usr/share/miniconda /usr/local/share/chromium
+        /usr/share/miniconda /usr/local/share/chromium /home/runner/.rustup \
+        /opt/hostedtoolcache /opt/az /usr/lib/google-cloud-sdk \
+        /opt/google /opt/microsoft
 echo "Disk space after:"
 df -h /
 
