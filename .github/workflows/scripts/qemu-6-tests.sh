@@ -193,6 +193,9 @@ case "$OS" in
     sudo mount -o noatime /dev/vtbd1 /var/tmp
     sudo chmod 1777 /var/tmp
     sudo mv -f /tmp/*.txt /var/tmp
+
+    # Speed up some zpool operations in ZTS
+    sudo sysctl vfs.zfs.txg.timeout=1
     ;;
   *)
     # use xfs @ /var/tmp for all distros
@@ -214,6 +217,10 @@ case "$OS" in
     if test -c /dev/watchdog; then
         sudo wdctl --settimeout 120 >/dev/null
     fi
+
+    # Speed up some zpool operations in ZTS
+    sudo bash -c 'echo 1 > /sys/module/zfs/parameters/zfs_txg_timeout'
+
     ;;
 esac
 
