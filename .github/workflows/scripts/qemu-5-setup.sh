@@ -23,7 +23,7 @@ OPTS[1]=""
 
 # Dedicated and overcommited RAM
 RAM=3
-MAXRAM=8
+MAXRAM=16
 case "$OS" in
   debian13)
     # Boot Debian 13 with uefi=on and secureboot=off (ZFS Kernel Module not signed)
@@ -42,7 +42,7 @@ sudo modprobe zram
 
 # Add more swap.  Ubuntu comes with 3GB of swap, so add another 18GB to swap
 # out the zram.
-sudo fallocate -l $((18 * 1024 * 1024 * 1024)) /swapfile2
+sudo fallocate -l $((29 * 1024 * 1024 * 1024)) /swapfile2
 sudo chmod 600 /swapfile2
 sudo mkswap /swapfile2
 sudo swapon /swapfile2
@@ -95,10 +95,6 @@ EOF
   THIS_DISK=/var/lib/libvirt/images/disk$i
   TESTDISK=/var/lib/libvirt/images/testdisk$i
 
-  tdisk1=$(sudo zramctl --find --algorithm zstd --size 3G)
-  tdisk2=$(sudo zramctl --find --algorithm zstd --size 3G)
-  tdisk3=$(sudo zramctl --find --algorithm zstd --size 3G)
-
   # Each VM gets a snapshot of the OS disk and build disk to save space
   sudo qemu-img create -f qcow2 -o backing_file=$DISK -F qcow2 $THIS_DISK
 
@@ -120,9 +116,6 @@ EOF
     --network bridge=virbr0,model=$NIC,mac="52:54:00:83:79:0$i" \
     --disk $THIS_DISK,bus=virtio,cache=writeback,format=qcow2,driver.discard=unmap,io=io_uring \
     --disk $TESTDISK,bus=virtio,cache=writeback,format=qcow2,driver.discard=unmap,io=io_uring \
-    --disk $tdisk1,bus=virtio,cache=none,format=raw,driver.discard=unmap,io=io_uring,serial=tdisk1 \
-    --disk $tdisk2,bus=virtio,cache=none,format=raw,driver.discard=unmap,io=io_uring,serial=tdisk2 \
-    --disk $tdisk3,bus=virtio,cache=none,format=raw,driver.discard=unmap,io=io_uring,serial=tdisk3 \
     --import --noautoconsole ${OPTS[0]} ${OPTS[1]} || true
 
 done

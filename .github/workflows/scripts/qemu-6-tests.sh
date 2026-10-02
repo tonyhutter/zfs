@@ -269,26 +269,15 @@ df -h > df-prerun.txt
 vmstat -s > vmstat-prerun.txt
 RV=0
 
-# Get all our test disk block devices.  These are passed up from the runner.
-# This is more efficient that the normal "create 3 loopback devices" method
-# that ZTS uses by default.  The disks show as:
-#
-# /dev/disk/by-id/virtio-tdisk1
-# /dev/disk/by-id/virtio-tdisk2
-# /dev/disk/by-id/virtio-tdisk3
-#
-# The DISKS value that ZTS expects assumes names like 'sda' 'sdb' 'sdc' rather
-# than the full path to the disk.  You'll see tests do things like:
-# zpool create "/dev/$DISK1" ... which break with full paths.  To get around
-# this, resolve our /dev/disk/by-id/virtio-tdisk* disks to their underlying 'vd*'
-# disk names.
-DISKS=""
-for i in $(ls /dev/disk/by-id/*tdisk* | xargs readlink -f) ; do
-        DISKS+="$(basename $i) "
-done
+tdisk1=$(sudo zramctl --find --algorithm lzo --size 3G)
+tdisk2=$(sudo zramctl --find --algorithm lzo --size 3G)
+tdisk3=$(sudo zramctl --find --algorithm lzo --size 3G)
 
-DISKS="vdc vdd vde" $TDIR/zfs-tests.sh -vKO -T $TAGS || RV=$?
-
+if uname | grep -qi linux ; then
+        DISKS="$(basename $tdisk1) $(basename $tdisk2) $(basename $tdisk3)" $TDIR/zfs-tests.sh -vKO -T $TAGS || RV=$?
+else
+        $TDIR/zfs-tests.sh -vKO -T $TAGS || RV=$?
+fi
 
 df -h > df-postrun.txt
 vmstat -s > vmstat-postrun.txt
