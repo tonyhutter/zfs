@@ -35,6 +35,8 @@
 
 log_assert "Zpool get usage message is displayed when called with no arguments."
 
+log_fail "I am failing"
+
 zpool get > /dev/null 2>&1
 RET=$?
 if [ $RET != 2 ]
