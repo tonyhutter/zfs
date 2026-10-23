@@ -1046,6 +1046,7 @@ typedef struct zpool_load_policy {
 #define	VDEV_TYPE_INDIRECT		"indirect"
 
 #define	VDEV_RAIDZ_MAXPARITY		3
+#define	VDEV_RAIDZ_MAX_CHILDREN		UINT8_MAX
 
 #define	VDEV_DRAID_MAXPARITY		3
 #define	VDEV_DRAID_MIN_CHILDREN		2

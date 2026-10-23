@@ -1224,6 +1224,46 @@ is_device_in_use(nvlist_t *config, nvlist_t *nv, boolean_t force,
 	return (anyinuse);
 }
 
+static int
+get_max_parity(const char *type)
+{
+	int max_parity = 0;
+	if (strncmp(type, VDEV_TYPE_RAIDZ, strlen(VDEV_TYPE_RAIDZ)) == 0) {
+		max_parity = VDEV_DRAID_MAXPARITY;
+	} else if (strncmp(type, VDEV_TYPE_DRAID,
+	    strlen(VDEV_TYPE_DRAID)) == 0) {
+		max_parity = VDEV_RAIDZ_MAXPARITY;
+	}
+	return (max_parity);
+}
+
+static int
+get_min_parity(const char *type)
+{
+	int min_parity = 0;
+	if (strncmp(type, VDEV_TYPE_RAIDZ, strlen(VDEV_TYPE_RAIDZ)) == 0 ||
+	    strncmp(type, VDEV_TYPE_DRAID, strlen(VDEV_TYPE_DRAID)) == 0)
+		min_parity = 1;
+
+	return (min_parity);
+
+}
+
+static int
+get_max_children(const char *type)
+{
+	int max_children = INT_MAX;
+	if (strncmp(type, VDEV_TYPE_RAIDZ, strlen(VDEV_TYPE_RAIDZ)) == 0) {
+		max_children = VDEV_DRAID_MAX_CHILDREN;
+	} else if (strncmp(type, VDEV_TYPE_DRAID,
+	    strlen(VDEV_TYPE_DRAID)) == 0) {
+		max_children = VDEV_RAIDZ_MAX_CHILDREN;
+	}
+	/* TODO: maximum mirror children? */
+
+	return (max_children);
+}
+
 /*
  * Returns the parity level extracted from a raidz or draid type.
  * If the parity cannot be determined zero is returned.
@@ -1232,31 +1272,17 @@ static int
 get_parity(const char *type)
 {
 	long parity = 0;
-	const char *p;
+	const char *p = NULL;
+	int max_parity = get_max_parity(type);
 
 	if (strncmp(type, VDEV_TYPE_RAIDZ, strlen(VDEV_TYPE_RAIDZ)) == 0) {
-		p = type + strlen(VDEV_TYPE_RAIDZ);
-
-		if (*p == '\0') {
-			/* when unspecified default to single parity */
-			return (1);
-		} else if (*p == '0') {
-			/* no zero prefixes allowed */
-			return (0);
-		} else {
-			/* 0-3, no suffixes allowed */
-			char *end;
-			errno = 0;
-			parity = strtol(p, &end, 10);
-			if (errno != 0 || *end != '\0' ||
-			    parity < 1 || parity > VDEV_RAIDZ_MAXPARITY) {
-				return (0);
-			}
-		}
+		p = type + strlen(VDEV_TYPE_DRAID);
 	} else if (strncmp(type, VDEV_TYPE_DRAID,
 	    strlen(VDEV_TYPE_DRAID)) == 0) {
 		p = type + strlen(VDEV_TYPE_DRAID);
+	}
 
+	if (p != NULL) {
 		if (*p == '\0' || *p == ':') {
 			/* when unspecified default to single parity */
 			return (1);
@@ -1269,7 +1295,7 @@ get_parity(const char *type)
 			errno = 0;
 			parity = strtol(p, &end, 10);
 			if (errno != 0 ||
-			    parity < 1 || parity > VDEV_DRAID_MAXPARITY ||
+			    parity < 1 || parity > max_parity ||
 			    (*end != '\0' && *end != ':')) {
 				return (0);
 			}
@@ -1289,6 +1315,9 @@ is_grouping(const char *type, int *mindev, int *maxdev)
 {
 	int nparity;
 
+	if (maxdev != NULL)
+		*maxdev = get_max_children(type);
+
 	if (strncmp(type, VDEV_TYPE_RAIDZ, strlen(VDEV_TYPE_RAIDZ)) == 0 ||
 	    strncmp(type, VDEV_TYPE_DRAID, strlen(VDEV_TYPE_DRAID)) == 0) {
 		nparity = get_parity(type);
@@ -1296,8 +1325,6 @@ is_grouping(const char *type, int *mindev, int *maxdev)
 			return (NULL);
 		if (mindev != NULL)
 			*mindev = nparity + 1;
-		if (maxdev != NULL)
-			*maxdev = 255;
 
 		if (strncmp(type, VDEV_TYPE_RAIDZ,
 		    strlen(VDEV_TYPE_RAIDZ)) == 0) {
@@ -1307,10 +1334,7 @@ is_grouping(const char *type, int *mindev, int *maxdev)
 		}
 	}
 
-	if (maxdev != NULL)
-		*maxdev = INT_MAX;
-
-	if (strcmp(type, "mirror") == 0) {
+	if (strncmp(type, VDEV_TYPE_MIRROR, strlen(VDEV_TYPE_MIRROR)) == 0) {
 		if (mindev != NULL)
 			*mindev = 2;
 		return (VDEV_TYPE_MIRROR);
@@ -1369,28 +1393,28 @@ is_grouping(const char *type, int *mindev, int *maxdev)
  * - zpool create tank draid2:8d:12c:96w:8s <devices...>
  */
 static int
-draid_config_by_type(nvlist_t *nv, const char *type, uint64_t width,
-    int nfgroup, int nfdomain)
+get_config_by_type_values(const char *type, uint64_t width,
+    int nfgroup, int nfdomain, uint64_t *nparity, uint64_t *nspares,
+    uint64_t *ndata, uint64_t *ngroups, uint64_t *children)
 {
-	uint64_t nparity;
-	uint64_t nspares = 0;
-	uint64_t ndata = UINT64_MAX;
-	uint64_t ngroups = 1;
-	uint64_t children = 0;
+	uint64_t _nparity;
+	uint64_t _nspares = 0;
+	uint64_t _ndata = UINT64_MAX;
+	uint64_t _ngroups = 1;
+	uint64_t _children = 0;
 	long value;
-
-	if (strncmp(type, VDEV_TYPE_DRAID, strlen(VDEV_TYPE_DRAID)) != 0)
-		return (EINVAL);
+	int min_parity = get_min_parity(type);
+	int max_parity = get_max_parity(type);
 
 	if (nfgroup && nfdomain) /* must be only one of two or none */
 		return (EINVAL);
 
-	nparity = (uint64_t)get_parity(type);
-	if (nparity == 0 || nparity > VDEV_DRAID_MAXPARITY) {
+	_nparity = (uint64_t)get_parity(type);
+	if (_nparity < min_parity || _nparity > max_parity) {
 		fprintf(stderr,
-		    "invalid dRAID parity level %llu; must be "
-		    "between 1 and %d\n", (u_longlong_t)nparity,
-		    VDEV_DRAID_MAXPARITY);
+		    "invalid parity level %llu; must be "
+		    "between %d and %d\n", (u_longlong_t)_nparity,
+		    min_parity, max_parity);
 		return (EINVAL);
 	}
 
@@ -1430,7 +1454,7 @@ draid_config_by_type(nvlist_t *nv, const char *type, uint64_t width,
 				    (u_longlong_t)width);
 				return (EINVAL);
 			}
-			children = value;
+			_children = value;
 		} else if (suffix == 'w') {
 			if ((uint64_t)value != width) {
 				fprintf(stderr,
@@ -1440,22 +1464,22 @@ draid_config_by_type(nvlist_t *nv, const char *type, uint64_t width,
 				return (EINVAL);
 			}
 		} else if (suffix == 'd') {
-			ndata = (uint64_t)value;
+			_ndata = (uint64_t)value;
 		} else if (suffix == 's') {
-			nspares = (uint64_t)value;
+			_nspares = (uint64_t)value;
 		} else {
 			verify(0); /* Unreachable */
 		}
 	}
 
-	if (!children && nfgroup)
-		children = width / nfgroup;
-	if (!children && nfdomain)
-		children = nfdomain;
-	if (!children)
-		children = width;
+	if (!_children && nfgroup)
+		_children = width / nfgroup;
+	if (!_children && nfdomain)
+		_children = nfdomain;
+	if (!_children)
+		_children = width;
 
-	int fgrps = width / children;
+	int fgrps = width / _children;
 
 	if (fgrps == 1 && (nfgroup || nfdomain)) {
 		fprintf(stderr, "failure domains are not set "
@@ -1469,14 +1493,14 @@ draid_config_by_type(nvlist_t *nv, const char *type, uint64_t width,
 		return (EINVAL);
 	}
 
-	if (fgrps > 1 && nfdomain && nfdomain != children) {
+	if (fgrps > 1 && nfdomain && nfdomain != _children) {
 		fprintf(stderr, "invalid number of failure domains "
-		    "%d, must be %lu\n", nfdomain, children);
+		    "%d, must be %lu\n", nfdomain, _children);
 		return (EINVAL);
 	}
 
-	int nspare = nspares / fgrps;
-	if (nspares % fgrps)
+	int nspare = _nspares / fgrps;
+	if (_nspares % fgrps)
 		nspare++;
 
 	/*
@@ -1484,24 +1508,24 @@ draid_config_by_type(nvlist_t *nv, const char *type, uint64_t width,
 	 * redundancy group to 8 data disks.  This value was selected to
 	 * provide a reasonable tradeoff between capacity and performance.
 	 */
-	if (ndata == UINT64_MAX) {
-		if (children > (nspare + nparity)) {
-			ndata = MIN(children - nspare - nparity, 8);
+	if (_ndata == UINT64_MAX) {
+		if (_children > (nspare + _nparity)) {
+			_ndata = MIN(_children - nspare - _nparity, 8);
 		} else {
 			fprintf(stderr, "requested number of "
 			    "distributed spares %llu and parity level %llu "
 			    "leaves no disks available for data\n",
-			    (u_longlong_t)nspare, (u_longlong_t)nparity);
+			    (u_longlong_t)nspare, (u_longlong_t)_nparity);
 			return (EINVAL);
 		}
 	}
 
 	/* Verify the maximum allowed group size is never exceeded. */
-	if (ndata == 0 || (ndata + nparity > children - nspare)) {
+	if (_ndata == 0 || (_ndata + _nparity > _children - nspare)) {
 		fprintf(stderr, "requested number of dRAID data "
 		    "disks %llu per group is too high,\nat most %llu disks "
-		    "are available for data\n", (u_longlong_t)ndata,
-		    (u_longlong_t)(children - nspare - nparity));
+		    "are available for data\n", (u_longlong_t)_ndata,
+		    (u_longlong_t)(_children - nspare - _nparity));
 		return (EINVAL);
 	}
 
@@ -1509,53 +1533,80 @@ draid_config_by_type(nvlist_t *nv, const char *type, uint64_t width,
 	 * Verify the requested number of spares can be satisfied.
 	 * An arbitrary limit of 100 distributed spares is applied.
 	 */
-	if (nspare > 100 || nspare > (children - (ndata + nparity))) {
+	if (nspare > 100 || nspare > (_children - (_ndata + _nparity))) {
 		fprintf(stderr,
 		    "invalid number of dRAID spares %llu; additional "
-		    "disks would be required\n", (u_longlong_t)nspares);
+		    "disks would be required\n", (u_longlong_t)_nspares);
 		return (EINVAL);
 	}
 
-	/* Verify the requested number children is sufficient. */
-	if (children < (ndata + nparity + nspare)) {
+	/* Verify the requested number _children is sufficient. */
+	if (_children < (_ndata + _nparity + nspare)) {
 		fprintf(stderr, "%llu disks were provided, but at "
 		    "least %llu disks are required for this config\n",
-		    (u_longlong_t)children,
-		    (u_longlong_t)(ndata + nparity + nspare));
+		    (u_longlong_t)_children,
+		    (u_longlong_t)(_ndata + _nparity + nspare));
 	}
 
-	if (width > VDEV_DRAID_MAX_CHILDREN) {
+	if (width > get_max_children(type)) {
 		fprintf(stderr, "%llu disks were provided, but "
 		    "dRAID only supports up to %u disks",
-		    (u_longlong_t)children, VDEV_DRAID_MAX_CHILDREN);
+		    (u_longlong_t)_children, get_max_children(type));
 	}
 
 	/*
 	 * Calculate the minimum number of groups required to fill a slice.
-	 * This is the LCM of the stripe width (ndata + nparity) and the
-	 * number of data drives (children - nspare).
+	 * This is the LCM of the stripe width (_ndata + _nparity) and the
+	 * number of data drives (_children - nspare).
 	 *
 	 * In case of failure domains, some failure groups may have less
 	 * number of spares than others, so they will have different number
-	 * of ngroups.
+	 * of _ngroups.
 	 */
-	uint64_t ndisks1 = children - (nspares / fgrps);
-	uint64_t ndisks2 = (nspares % fgrps) ? ndisks1 - 1 : ndisks1;
-	while (ngroups * (ndata + nparity) % ndisks2 != 0 ||
+	uint64_t ndisks1 = _children - (_nspares / fgrps);
+	uint64_t ndisks2 = (_nspares % fgrps) ? ndisks1 - 1 : ndisks1;
+	while (_ngroups * (_ndata + _nparity) % ndisks2 != 0 ||
 	    (ndisks1 != ndisks2 &&
-	    ((ngroups + 1) * (ndata + nparity) % ndisks1) != 0))
-		ngroups++;
+	    ((_ngroups + 1) * (_ndata + _nparity) % ndisks1) != 0))
+		_ngroups++;
 
-	/* Keep bigger valude of ngroups for the next calculation. */
+	/* Keep bigger valude of _ngroups for the next calculation. */
 	if (ndisks1 != ndisks2)
-		ngroups++;
+		_ngroups++;
 
 	/*
-	 * Total ngroups in all failure groups. The failure groups with
-	 * additional spare (nspares % fgrps) have one less ngroups.
+	 * Total _ngroups in all failure groups. The failure groups with
+	 * additional spare (_nspares % fgrps) have one less _ngroups.
 	 */
-	ngroups = (ngroups - 1) * (nspares % fgrps) +
-	    ngroups * (fgrps - (nspares % fgrps));
+	_ngroups = (_ngroups - 1) * (_nspares % fgrps) +
+	    _ngroups * (fgrps - (_nspares % fgrps));
+
+	*nparity = _nparity;
+	*nspares = _nspares;
+	*ndata = _ndata;
+	*ngroups = _ngroups;
+	*children = _children;
+
+	return (0);
+}
+
+static nvlist_t * construct_spec(nvlist_t *props, int argc, char **argv);
+
+static int
+draid_config_by_type(nvlist_t *nv, const char *type, uint64_t width,
+    int nfgroup, int nfdomain)
+{
+	int rc;
+	uint64_t nparity;
+	uint64_t nspares;
+	uint64_t ndata;
+	uint64_t ngroups;
+	uint64_t children;
+
+	rc = get_config_by_type_values(type, width, nfgroup, nfdomain, &nparity,
+	    &nspares, &ndata, &ngroups, &children);
+	if (rc != 0)
+		return rc;
 
 	/* Store the basic dRAID configuration. */
 	fnvlist_add_uint64(nv, ZPOOL_CONFIG_NPARITY, nparity);
@@ -1564,7 +1615,143 @@ draid_config_by_type(nvlist_t *nv, const char *type, uint64_t width,
 	fnvlist_add_uint64(nv, ZPOOL_CONFIG_DRAID_NGROUPS, ngroups);
 	fnvlist_add_uint64(nv, ZPOOL_CONFIG_DRAID_NCHILDREN, children);
 
+	return (rc);
+}
+
+static int
+raidz_mirror_config_by_type(nvlist_t *props, nvlist_t ***top, int *toplevels,
+    const char *type, uint64_t width, int nfgroup, int nfdomain,
+    nvlist_t **child)
+{
+	int rc;
+	uint64_t nparity;
+	uint64_t nspares;
+	uint64_t ndata;
+	uint64_t ngroups;
+	uint64_t children;
+	int i, j;
+	nvlist_t *tmp_nv;
+	char **argv;
+	char **ptr;
+	nvlist_t **groups;
+	uint_t num_groups;
+	nvlist_t *dup;
+	nvlist_t **newtop;
+	
+	const char *short_type = is_grouping(type, NULL, NULL);
+	char type_and_parity[7];
+
+	rc = get_config_by_type_values(type, width, nfgroup, nfdomain, &nparity,
+	    &nspares, &ndata, &ngroups, &children);
+	if (rc != 0)
+		return rc;
+
+	/* Get the 'raidz' 'draid' 'mirror' part */
+	short_type = is_grouping(type, NULL, NULL);
+
+	/* 'short_type' will contain the type with parity (like 'raidz2'). */
+	if (nparity != 0)
+		rc = snprintf(type_and_parity, sizeof(type_and_parity),
+		    "%s%llu", short_type, (long long unsigned) nparity);
+	else
+		rc = snprintf(type_and_parity, sizeof(type_and_parity),
+		    "%s", short_type);
+
+
+	ASSERT3S(rc, <, sizeof(type_and_parity));
+
+	printf("%s: begin width %llu, nfgroup %llu, nfdomain %llu %p %p,"
+	     " nparity %llu, ndata %llu, ngroups %llu children %llu\n",
+		__func__, (long long unsigned) width, (long long unsigned) nfgroup,
+		(long long unsigned) nfdomain, type, child,
+		(long long unsigned)nparity, (long long unsigned)ndata,
+		(long long unsigned)ngroups, (long long unsigned) children);
+
+	/*
+	 * We want to take a config parameter string like "raidz1:2d:3c:w6"
+	 * and it's disks (passed in as the child[] nvlist array), and
+	 * translate it into multiple groups.  For example, we want to 
+	 * translate this:
+	 * 
+	 * 	raidz1:2d:3c:w9 d1 d2 d3 d4 d5 d6 d7 d8 d9
+	 *
+	 * into the "long hand" format:
+	 *
+	 * 	raidz1 d1 d2 d3 raidz1 d4 d5 d6 raidz1 d7 d8 d9
+	 *
+	 * To do that, we break up the disks into groups, and nvlist-ify
+	 * the groups.  To get the correct nvlist format, we call
+	 * construct_spec() on each group of disks.  construct_spec() expects
+	 * an argc/argv format, so we first translate into that format like:
+	 *
+	 * argv[] = {"raidz1", "d1", "d2", "d3", "raidz1", "d4", "d5", "d6",
+	 *     "raidz1", "d7", "d8", "d9"}
+	 */
+	argv = safe_malloc(sizeof(*argv) * (width + ngroups));
+	ptr = argv;
+	tmp_nv = fnvlist_alloc();
+	for (i = 0; i < ngroups; i++) {
+		*ptr = type_and_parity;
+		ptr++;
+		for (j = 0; j < width / ngroups; j++) {
+			*ptr = (char *) fnvlist_lookup_string(
+			    child[(i * width/ngroups) + j],
+			    ZPOOL_CONFIG_PATH);
+			ptr++;
+		}
+	}
+
+	/* 
+	 * argv[] now contains the "long hand" version of our groups.  Get
+	 * the nvlist for those groups.
+	 */
+	tmp_nv = construct_spec(props, width + ngroups, argv);
+	free(argv);
+
+	ASSERT0(nvlist_lookup_nvlist_array(tmp_nv, ZPOOL_CONFIG_CHILDREN,
+	    &groups, &num_groups));
+
+	/* Add all our groups to the main root vdev nvlist array */
+	newtop = realloc(*top, (num_groups + *toplevels) * sizeof (nvlist_t *));
+	if (newtop == NULL)
+		zpool_no_memory();
+
+	for (int g = 0; g < num_groups; g++) {
+		dup = fnvlist_dup(groups[g]);
+		newtop[*toplevels] = dup;
+		*toplevels = *toplevels + 1;
+	}
+
+	nvlist_free(tmp_nv);
+
+	*top = newtop;
 	return (0);
+
+}
+
+/*
+ * Is this a config parameter string with a form like?:
+ *
+ *    draid2:8d:51c:2s
+ *    mirror:4c:12w
+ *    raidz1:5d:6c:12w
+ *
+ * It doesn't check that the parameter string values are valid.
+ */
+static boolean_t
+is_config_param_string(const char *config_str)
+{
+	const char *type = is_grouping(config_str, NULL, NULL);
+
+	if (strcmp(type, VDEV_TYPE_MIRROR) != 0 &&
+	    strcmp(type, VDEV_TYPE_RAIDZ) != 0 &&
+	    strcmp(type, VDEV_TYPE_DRAID) != 0)
+		return (B_FALSE);
+
+	if (strchr(config_str, ':') == NULL)
+		return (B_FALSE);
+	
+	return (B_TRUE);
 }
 
 /*
@@ -1772,17 +1959,6 @@ construct_spec(nvlist_t *props, int argc, char **argv)
 				goto spec_out;
 			}
 
-			if ((nfdomain || nfgroup) &&
-			    strcmp(type, VDEV_TYPE_DRAID) != 0) {
-				(void) fprintf(stderr, "invalid vdev "
-				    "specification: %s is not dRAID and cannot "
-				    "have failure domains\n", argv[0]);
-				for (c = 0; c < children; c++)
-					nvlist_free(child[c]);
-				free(child);
-				goto spec_out;
-			}
-
 			if (nfgroup && nfdomain) {
 				(void) fprintf(stderr, "invalid vdev "
 				    "specification: %s has mixed configuration "
@@ -1885,11 +2061,7 @@ construct_spec(nvlist_t *props, int argc, char **argv)
 					fnvlist_add_uint64(nv,
 					    ZPOOL_CONFIG_ASHIFT, ashift);
 				}
-				if (strcmp(type, VDEV_TYPE_RAIDZ) == 0) {
-					verify(nvlist_add_uint64(nv,
-					    ZPOOL_CONFIG_NPARITY,
-					    mindev - 1) == 0);
-				}
+
 				if (strcmp(type, VDEV_TYPE_DRAID) == 0) {
 					if (draid_config_by_type(nv,
 					    fulltype, children, nfgroup,
@@ -1899,10 +2071,33 @@ construct_spec(nvlist_t *props, int argc, char **argv)
 						free(child);
 						goto spec_out;
 					}
+				} else if (is_config_param_string(fulltype) ||
+				    nfdomain > 0 || nfgroup > 0) {
+					if (raidz_mirror_config_by_type(props,
+					    &top, &toplevels, type, children,
+					    nfgroup, nfdomain,
+					    child) != 0) {
+						for (c = 0; c < children; c++)
+							nvlist_free(child[c]);
+						free(child);
+						goto spec_out;
+					}
+					/* 
+					 * raidz_mirror_config_by_type() handled
+					 * updating top & toplevels, so we
+					 * can skip to the next loop iteration.
+					 */
+					continue;
+				} else if (strcmp(type, VDEV_TYPE_RAIDZ) == 0) {
+					verify(nvlist_add_uint64(nv,
+					    ZPOOL_CONFIG_NPARITY,
+					    mindev - 1) == 0);
 				}
+
 				verify(nvlist_add_nvlist_array(nv,
 				    ZPOOL_CONFIG_CHILDREN,
-				    (const nvlist_t **)child, children) == 0);
+				    (const nvlist_t **)child,
+				    children) == 0);
 
 				for (c = 0; c < children; c++)
 					nvlist_free(child[c]);
@@ -1967,6 +2162,7 @@ construct_spec(nvlist_t *props, int argc, char **argv)
 	verify(nvlist_alloc(&nvroot, NV_UNIQUE_NAME, 0) == 0);
 	verify(nvlist_add_string(nvroot, ZPOOL_CONFIG_TYPE,
 	    VDEV_TYPE_ROOT) == 0);
+
 	verify(nvlist_add_nvlist_array(nvroot, ZPOOL_CONFIG_CHILDREN,
 	    (const nvlist_t **)top, toplevels) == 0);
 	if (nspares != 0)
