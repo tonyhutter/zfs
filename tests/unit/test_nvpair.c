@@ -1774,6 +1774,9 @@ test_nv_dup(const MunitParameter params[], void *data)
 	    nvl_simple_u64_key, ~nvl_simple_u64_val));
 
 	copypair = nvlist_next_nvpair(copy, NULL);
+	if (copypair == NULL)
+		munit_error("test_nv_dup: copypair == NULL");
+
 	unit_str_eq(nvpair_name(copypair), nvl_simple_u64_key);
 	uint64_t copyval;
 	unit_ok(nvpair_value_uint64(copypair, &copyval));
