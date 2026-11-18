@@ -5,17 +5,15 @@
 ######################################################################
 set -e
 
-# Build from the latest Lustre tag rather than the master branch.  We do this
-# under the assumption that master is going to have a lot of churn thus will be
-# more prone to breaking the build than a point release.  We don't want ZFS
-# PR's reporting bad test results simply because upstream Lustre accidentally
-# broke their build.
+# Build from the latest Lustre devel tag rather than the master branch.  We do
+# this under the assumption that master is going to have a lot of churn thus
+# will be more prone to breaking the build than a point release.  We don't want
+# ZFS # PR's reporting bad test results simply because upstream Lustre
+# accidentally broke their build.
 #
-# Skip any RC tags, or any tags where the last version digit is 50 or more.
-# Versions with 50 or more are development versions of Lustre.
 repo=https://github.com/lustre/lustre-release.git
 tag="$(git ls-remote --refs --exit-code --sort=version:refname --tags $repo | \
-	awk -F '_' '/-RC/{next}; /refs\/tags\/v/{if ($NF < 50){print}}' | \
+	awk -F '_' '/-RC/{next}; /refs\/tags\/v/{print}' | \
 	tail -n 1 | sed 's/.*\///')"
 
 echo "Cloning Lustre tag $tag"
