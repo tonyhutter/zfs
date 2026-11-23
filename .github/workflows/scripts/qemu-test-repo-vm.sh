@@ -68,7 +68,18 @@ function test_install {
 	fi
 
 	# Load modules and create a simple pool as a sanity test.
-	sudo /usr/share/zfs/zfs.sh -r
+	if !  sudo /usr/share/zfs/zfs.sh -r ; then
+		echo "UNAME: $(uname -r)"
+		echo "-----"
+		sudo find /lib/modules | grep -E 'zfs|spl'
+		echo "-----"
+		sudo dmesg | tail -n 10
+		echo "-----"
+		echo "$repo ${package}...[FAILED] $baseurl" >> $SUMMARY
+		sudo dnf remove $args zfs zfs-test || true
+		return
+	fi
+
 	truncate -s 100M /tmp/file
 	sudo zpool create tank /tmp/file
 	sudo zpool status
